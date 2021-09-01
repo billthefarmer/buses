@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="appName">Buses</string>
+    <string name="search">Search</string>
+    <string name="help">Help</string>
+    <string name="about">About</string>
 </resources>

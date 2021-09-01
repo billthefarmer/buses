@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  Location - An Android location app.
+//  Buses - An Android bus times app.
 //
-//  Copyright (C) 2015	Bill Farmer
+//  Copyright (C) 2021	Bill Farmer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,11 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
 
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.api.IMapController;
@@ -59,14 +64,20 @@ import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
 
 public class Buses extends Activity
+    implements LocationListener
 {
     private final static String TAG = "Buses";
+
+    public final static String CODE = "code";
 
     private final static String LOCATION = "location";
     private final static String LATITUDE = "latitude";
     private final static String LONGITUDE = "longitude";
 
-    private final static int REQUEST_PERMISSIONS_REQUEST_CODE = 1;
+    private final static int REQUEST_PERMS = 1;
+
+    private static final int SHORT_DELAY = 5000;
+    private static final int LONG_DELAY = 10000;
 
     private MapView map = null;  
 
@@ -237,6 +248,31 @@ public class Buses extends Activity
                         // v6.0.0 and up
     }
 
+    // On create options menu
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+	// Inflate the menu; this adds items to the action bar if it
+	// is present.
+	MenuInflater inflater = getMenuInflater();
+	inflater.inflate(R.menu.main, menu);
+
+	return true;
+    }
+
+    // On options item selected
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+	// Get id
+	int id = item.getItemId();
+	switch (id)
+	{
+        }
+
+        return true;
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String[] permissions,
@@ -250,8 +286,49 @@ public class Buses extends Activity
         if (permissionsToRequest.size() > 0)
         {
             requestPermissions(permissionsToRequest.toArray(new String[0]),
-                               REQUEST_PERMISSIONS_REQUEST_CODE);
+                               REQUEST_PERMS);
         }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onLocationChanged(Location location)
+    {
+	IMapController mapController = map.getController();
+
+	// Zoom map once
+	if (!zoomed)
+	{
+	    mapController.setZoom(14);
+	    zoomed = true;
+	}
+
+	// Get point
+	GeoPoint point = new GeoPoint(location);
+
+	// Centre map once
+	if (!located)
+	{
+	    mapController.setCenter(point);
+	    located = true;
+	}
+
+	// Set location
+	simpleLocation.setLocation(point);
+
+        if (scrolled)
+            map.postDelayed(new Runnable()
+            {
+                // run
+                @Override
+                public void run()
+                {
+                    scrolled = false;
+                }
+            }, LONG_DELAY);
+
+        else
+            showLocation(location);
     }
 
     private void requestPermissionsIfNecessary(String[] permissions)
@@ -269,7 +346,7 @@ public class Buses extends Activity
         if (permissionsToRequest.size() > 0)
         {
             requestPermissions(permissionsToRequest.toArray(new String[0]),
-                               REQUEST_PERMISSIONS_REQUEST_CODE);
+                               REQUEST_PERMS);
         }
     }
 
@@ -323,4 +400,13 @@ public class Buses extends Activity
         leftOverlay.setText(leftList);
         map.invalidate();
     }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+    @Override
+    public void onProviderEnabled(String provider) {}
+
+    @Override
+    public void onProviderDisabled(String provider) {}
 }
