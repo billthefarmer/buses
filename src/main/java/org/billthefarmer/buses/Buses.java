@@ -386,7 +386,7 @@ public class Buses extends Activity
 	coord.toOSGB36();
 	OSRef OSCoord = coord.toOSRef();
 
-	if (OSCoord.isValid())
+	if (true) // (OSCoord.isValid())
 	{
 	    double east = OSCoord.getEasting();
 	    double north = OSCoord.getNorthing();
