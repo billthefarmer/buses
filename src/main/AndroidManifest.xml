@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="org.billthefarmer.buses"
+    android:installLocation="auto"
+    tools:ignore="GoogleAppIndexingWarning">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <meta-data
+      android:name="android.webkit.WebView.MetricsOptOut"
+      android:value="true" />
+
+  <application
+      android:allowBackup="true"
+      android:icon="@drawable/ic_launcher"
+      android:label="@string/appName"
+      android:theme="@style/AppDarkTheme"
+      tools:ignore="AllowBackup">
+
+    <activity
+        android:name="Buses"
+        android:label="@string/appName"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+
+    <activity
+        android:name="SearchActivity"
+        android:label="@string/app_name"
+        android:windowSoftInputMode="stateHidden" />
+
+  </application>
+
+</manifest>
