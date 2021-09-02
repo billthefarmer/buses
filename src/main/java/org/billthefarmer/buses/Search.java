@@ -30,9 +30,11 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.MenuItem;
+import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ProgressBar;
 
 import java.util.Locale;
 
@@ -48,9 +50,11 @@ public class Search extends Activity
         "%s?currentPage=0";
 
     private WebView webview;
+    private ProgressBar progress;
 
     // Called when the activity is first created
     @Override
+    @SuppressWarnings("deprecation")
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -60,6 +64,7 @@ public class Search extends Activity
 
         // Find web view
         webview = findViewById(R.id.webview);
+        progress = findViewById(R.id.progress);
 
         // Enable back navigation on action bar
         ActionBar actionBar = getActionBar();
@@ -68,10 +73,7 @@ public class Search extends Activity
 
         if (webview != null)
         {
-            // Enable javascript, DuckDuckGo doesn't work unless
-            // JavaScript is enabled
             WebSettings settings = webview.getSettings();
-            settings.setJavaScriptEnabled(true);
 
             // Enable zoom
             settings.setBuiltInZoomControls(true);
@@ -84,9 +86,23 @@ public class Search extends Activity
                 @Override
                 public void onPageFinished(WebView view, String url)
                 {
+                    // Remove progress
+                    progress.setVisibility(View.GONE);
+
                     // Get page title
                     if (view.getTitle() != null)
                         setTitle(view.getTitle());
+                }
+
+                // shouldOverrideUrlLoading
+                @Override
+                public boolean shouldOverrideUrlLoading (WebView view, 
+                                                         String url)
+                {
+                    // Show progress
+                    progress.setVisibility(View.VISIBLE);
+
+                    return false;
                 }
             });
 
@@ -107,6 +123,8 @@ public class Search extends Activity
                 else
                     url = String.format(Locale.getDefault(),
                                         MULTI_FORMAT, code);
+                // Show progress
+                progress.setVisibility(View.VISIBLE);
 
                 // Do web search
                 webview.loadUrl(url);

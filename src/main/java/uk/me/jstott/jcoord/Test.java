@@ -33,7 +33,8 @@ public class Test {
    *          not used
    * @since 1.0
    */
-  public static void main(String[] args) {
+    @SuppressWarnings("deprecation")
+    public static void main(String[] args) {
 
     /*
      * Calculate Surface Distance between two Latitudes/Longitudes

@@ -25,20 +25,33 @@ package org.billthefarmer.buses;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
-import android.content.pm.PackageManager;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.text.SpannableStringBuilder;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.SearchView;
+import android.widget.TextView;
 
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.api.IMapController;
@@ -47,11 +60,12 @@ import org.osmdroid.events.MapAdapter;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.CustomZoomButtonsController;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.CopyrightOverlay;
 import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
-import org.osmdroid.views.overlay.mylocation.SimpleLocationOverlay;
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -59,6 +73,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
@@ -80,56 +97,44 @@ public class Buses extends Activity
     private static final int LONG_DELAY = 10000;
 
     private MapView map = null;  
+    private MenuItem searchItem;
+    private SearchView searchView;
 
     private Location last = null;
     private Location location = null;
     private LocationManager locationManager;
     private DateFormat dateFormat;
 
-    private SimpleLocationOverlay simpleLocation;
+    private MyLocationNewOverlay myLocation;
     private TextOverlay leftOverlay;
     private TextOverlay rightOverlay;
+
+    private GestureDetector gestureDetector;
 
     private boolean located;
     private boolean scrolled;
     private boolean zoomed;
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
-        // handle permissions first, before map is created. not
-        // depicted here
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            requestPermissionsIfNecessary(new String[]
-            {
-                // if you need to show the current location, uncomment the
-                // line below
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                // WRITE_EXTERNAL_STORAGE is required in order to show the map
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            });
-
-        // load/initialize the osmdroid configuration, this can be
-        // done
+        Configuration.getInstance()
+            .setUserAgentValue(BuildConfig.APPLICATION_ID);
+        // load/initialize the osmdroid configuration
         Configuration.getInstance()
             .load(this, PreferenceManager.getDefaultSharedPreferences(this));
-        // setting this before the layout is inflated is a good idea
-        // it 'should' ensure that the map has a writable location for
-        // the map cache, even without permissions if no tiles are
-        // displayed, you can try overriding the cache path using
-        // Configuration.getInstance().setCachePath see also
-        // StorageUtils note, the load method also sets the HTTP User
-        // Agent to your application's package name, abusing osm's
-        // tile servers will get you banned based on this string
 
         // inflate and create the map
         setContentView(R.layout.main);
 
         map = (MapView) findViewById(R.id.map);
         map.setTileSource(TileSourceFactory.MAPNIK);
-        map.setBuiltInZoomControls(true);
+        map.getZoomController()
+            .setVisibility(CustomZoomButtonsController
+                           .Visibility.SHOW_AND_FADEOUT);
         map.setMultiTouchControls(true);
 
         List<Overlay> overlayList = map.getOverlays();
@@ -146,10 +151,8 @@ public class Buses extends Activity
         scale.setAlignRight(true);
         overlayList.add(scale);
 
-        simpleLocation =
-            new SimpleLocationOverlay(this);
-        overlayList.add(simpleLocation);
-
+        myLocation = new MyLocationNewOverlay(map);
+        overlayList.add(myLocation);
         leftOverlay = new TextOverlay(this);
         overlayList.add(leftOverlay);
         leftOverlay.setAlignBottom(false);
@@ -160,7 +163,7 @@ public class Buses extends Activity
         rightOverlay.setAlignBottom(false);
         rightOverlay.setAlignRight(true);
 
-        map.setMapListener(new MapAdapter()
+        map.addMapListener(new MapAdapter()
         {
             public boolean onScroll(ScrollEvent event)
             {
@@ -183,15 +186,31 @@ public class Buses extends Activity
             }
         });
 
+        gestureDetector = new GestureDetector(this, new GestureListener());
+
+        map.setOnTouchListener((v, event) ->
+        {
+            gestureDetector.onTouchEvent(event);
+
+            return false;
+        });
+
+        dateFormat = DateFormat.getDateTimeInstance();
+
+        // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            requestPermissionsIfNecessary(new String[]
+        {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
             {
-                // if you need to show the current location, uncomment the
-                // line below
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                // WRITE_EXTERNAL_STORAGE is required in order to show the map
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            });
+                requestPermissions(new String[]
+                {Manifest.permission.ACCESS_FINE_LOCATION,
+                 Manifest.permission.READ_EXTERNAL_STORAGE,
+                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                   REQUEST_PERMS);
+                return;
+            }
+        }
 
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager)
@@ -223,16 +242,28 @@ public class Buses extends Activity
         map.onResume(); // needed for compass, my location overlays,
                         // v6.0.0 and up
     
-        IMapController mapController = map.getController();
+        // IMapController mapController = map.getController();
 
         // Zoom map
-        mapController.setZoom(7);
+        map.getController().setZoom(7.0);
 
         // Get point
         GeoPoint point = new GeoPoint(52.561928, -1.464854);
 
         // Centre map
-        mapController.setCenter(point);
+        map.getController().setCenter(point);
+
+        if (locationManager != null)
+        {
+            Location location =
+                locationManager.getLastKnownLocation(LocationManager
+                                                     .GPS_PROVIDER);
+            if (location != null)
+                showLocation(location);
+
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+						   SHORT_DELAY, 0, this);
+        }
     }
 
     @Override
@@ -246,6 +277,9 @@ public class Buses extends Activity
         Configuration.getInstance().save(this, prefs);
         map.onPause();  // needed for compass, my location overlays,
                         // v6.0.0 and up
+
+        if (locationManager != null)
+            locationManager.removeUpdates(this);
     }
 
     // On create options menu
@@ -260,6 +294,25 @@ public class Buses extends Activity
 	return true;
     }
 
+    // onPrepareOptionsMenu
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu)
+    {
+        // Set up search view
+        searchItem = menu.findItem(R.id.action_search);
+        searchView = (SearchView) searchItem.getActionView();
+
+        // Set up search view options and listener
+        if (searchView != null)
+        {
+            searchView.setSubmitButtonEnabled(true);
+            searchView.setImeOptions(EditorInfo.IME_ACTION_GO);
+            searchView.setOnQueryTextListener(new QueryTextListener(this));
+        }
+
+        return true;
+    }
+
     // On options item selected
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
@@ -268,30 +321,48 @@ public class Buses extends Activity
 	int id = item.getItemId();
 	switch (id)
 	{
+            // Search
+        case R.id.action_search:
+            break;
+
+            // Help
+        case R.id.action_help:
+            help();
+            break;
+
+            // About
+        case R.id.action_about:
+            about();
+            break;
+
+        default:
+            return super.onOptionsItemSelected(item);
         }
 
         return true;
     }
 
+    // onRequestPermissionsResult
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String[] permissions,
                                            int[] grantResults)
     {
-        ArrayList<String> permissionsToRequest = new ArrayList<>();
-        for (int i = 0; i < grantResults.length; i++)
+        switch (requestCode)
         {
-            permissionsToRequest.add(permissions[i]);
-        }
-        if (permissionsToRequest.size() > 0)
-        {
-            requestPermissions(permissionsToRequest.toArray(new String[0]),
-                               REQUEST_PERMS);
+        case REQUEST_PERMS:
+            for (int i = 0; i < grantResults.length; i++)
+                if (permissions[i].equals(Manifest.permission
+                                          .ACCESS_FINE_LOCATION) &&
+                    grantResults[i] == PackageManager.PERMISSION_GRANTED)
+                    // Acquire a reference to the system Location
+                    // Manager
+                    locationManager =
+                        (LocationManager)getSystemService(LOCATION_SERVICE);
         }
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public void onLocationChanged(Location location)
     {
 	IMapController mapController = map.getController();
@@ -299,7 +370,7 @@ public class Buses extends Activity
 	// Zoom map once
 	if (!zoomed)
 	{
-	    mapController.setZoom(14);
+	    mapController.setZoom(20.0);
 	    zoomed = true;
 	}
 
@@ -313,41 +384,14 @@ public class Buses extends Activity
 	    located = true;
 	}
 
-	// Set location
-	simpleLocation.setLocation(point);
-
         if (scrolled)
-            map.postDelayed(new Runnable()
+            map.postDelayed(() ->
             {
-                // run
-                @Override
-                public void run()
-                {
-                    scrolled = false;
-                }
+                scrolled = false;
             }, LONG_DELAY);
 
         else
             showLocation(location);
-    }
-
-    private void requestPermissionsIfNecessary(String[] permissions)
-    {
-        ArrayList<String> permissionsToRequest = new ArrayList<>();
-        for (String permission : permissions)
-        {
-            if (checkSelfPermission(permission)
-                != PackageManager.PERMISSION_GRANTED)
-            {
-                // Permission is not granted
-                permissionsToRequest.add(permission);
-            }
-        }
-        if (permissionsToRequest.size() > 0)
-        {
-            requestPermissions(permissionsToRequest.toArray(new String[0]),
-                               REQUEST_PERMS);
-        }
     }
 
     // Show location
@@ -390,7 +434,9 @@ public class Buses extends Activity
 	{
 	    double east = OSCoord.getEasting();
 	    double north = OSCoord.getNorthing();
-	    String OSString = OSCoord.toSixFigureString();
+	    // String OSString = OSCoord.toSixFigureString();
+            String OSString =
+                OSCoord.getOsRefWithPrecisionOf(OSRef.Precision.SIX_DIGITS);
 
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
@@ -399,6 +445,99 @@ public class Buses extends Activity
 
         leftOverlay.setText(leftList);
         map.invalidate();
+    }
+
+    // help
+    private void help()
+    {
+        // Start help activity
+        Intent intent = new Intent(this, Help.class);
+        startActivity(intent);
+    }
+
+    // about
+    private void about()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.appName);
+
+        DateFormat dateFormat = DateFormat.getDateTimeInstance();
+        SpannableStringBuilder spannable =
+            new SpannableStringBuilder(getText(R.string.version));
+        Pattern pattern = Pattern.compile("%s");
+        Matcher matcher = pattern.matcher(spannable);
+        if (matcher.find())
+            spannable.replace(matcher.start(), matcher.end(),
+                              BuildConfig.VERSION_NAME);
+        matcher.reset(spannable);
+        if (matcher.find())
+            spannable.replace(matcher.start(), matcher.end(),
+                              dateFormat.format(BuildConfig.BUILT));
+        builder.setMessage(spannable);
+
+        // Add the button
+        builder.setPositiveButton(android.R.string.ok, null);
+
+        // Create the AlertDialog
+        Dialog dialog = builder.show();
+
+        // Set movement method
+        TextView text = dialog.findViewById(android.R.id.message);
+        if (text != null)
+            text.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    // QueryTextListener
+    private class QueryTextListener
+        implements SearchView.OnQueryTextListener
+    {
+        private Context context;
+
+        // QueryTextListener
+        QueryTextListener(Context context)
+        {
+            this.context = context;
+        }
+
+        // onQueryTextChange
+        @Override
+        @SuppressWarnings("deprecation")
+        public boolean onQueryTextChange(String newText)
+        {
+            return true;
+        }
+
+        // onQueryTextSubmit
+        @Override
+        public boolean onQueryTextSubmit(String query)
+        {
+            // Start search activity
+            Intent intent = new Intent(context, Search.class);
+            intent.putExtra(Buses.CODE, query);
+            startActivity(intent);
+
+            // Close text search
+            if (searchItem != null && searchItem.isActionViewExpanded())
+                searchItem.collapseActionView();
+
+            return true;
+        }
+    }
+
+    // GestureListener
+    private class GestureListener
+        extends GestureDetector.SimpleOnGestureListener
+    {
+        // onLongPress
+        @Override
+        public void onLongPress(MotionEvent e)
+        {
+            IGeoPoint point = map.getProjection()
+                .fromPixels((int) e.getX(), (int) e.getY());
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "Coords " + point.getLatitude() +
+                      ", " + point.getLongitude());
+        }
     }
 
     @Override
