@@ -1,9 +1,9 @@
 # ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions)
 
-![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
-
 This app is a geographical front end to and wrapper around
-the [NextBuses](https://nextbuses.mobi/) web site.
+the UK [NextBuses](https://nextbuses.mobi/) web site.
+
+![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
 
 ## Intro
 Scroll and zoom the map to find a bus stop and tap the map to get a
