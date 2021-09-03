@@ -50,11 +50,11 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.widget.ImageButton;
 import android.widget.SearchView;
 import android.widget.TextView;
 
 import org.osmdroid.api.IGeoPoint;
-import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapAdapter;
 import org.osmdroid.events.ScrollEvent;
@@ -99,7 +99,7 @@ public class Buses extends Activity
     private MapView map = null;  
     private MenuItem searchItem;
     private SearchView searchView;
-
+    private ImageButton button;
     private Location last = null;
     private Location location = null;
     private LocationManager locationManager;
@@ -130,7 +130,10 @@ public class Buses extends Activity
         // inflate and create the map
         setContentView(R.layout.main);
 
+        dateFormat = DateFormat.getDateTimeInstance();
+
         map = (MapView) findViewById(R.id.map);
+
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.getZoomController()
             .setVisibility(CustomZoomButtonsController
@@ -153,6 +156,7 @@ public class Buses extends Activity
 
         myLocation = new MyLocationNewOverlay(map);
         overlayList.add(myLocation);
+
         leftOverlay = new TextOverlay(this);
         overlayList.add(leftOverlay);
         leftOverlay.setAlignBottom(false);
@@ -163,6 +167,16 @@ public class Buses extends Activity
         rightOverlay.setAlignBottom(false);
         rightOverlay.setAlignRight(true);
 
+        // Zoom map
+        map.getController().setZoom(7.0);
+
+        // Get point
+        GeoPoint point = new GeoPoint(52.561928, -1.464854);
+
+        // Centre map
+        map.getController().setCenter(point);
+
+        // Map listener
         map.addMapListener(new MapAdapter()
         {
             public boolean onScroll(ScrollEvent event)
@@ -173,12 +187,9 @@ public class Buses extends Activity
                     if (zoomed)
                         scrolled = true;
 
-                    double lat = point.getLatitude();
-                    double lng = point.getLongitude();
-
                     Location location = new Location("MapView");
-                    location.setLatitude(lat);
-                    location.setLongitude(lng);
+                    location.setLatitude(point.getLatitude());
+                    location.setLongitude(point.getLongitude());
                     showLocation(location);
                 }
 
@@ -186,16 +197,33 @@ public class Buses extends Activity
             }
         });
 
-        gestureDetector = new GestureDetector(this, new GestureListener());
-
+        // Gesture detector
+        gestureDetector = new GestureDetector(this, new GestureListener(this));
         map.setOnTouchListener((v, event) ->
         {
             gestureDetector.onTouchEvent(event);
-
             return false;
         });
 
-        dateFormat = DateFormat.getDateTimeInstance();
+        button = (ImageButton) findViewById(R.id.locate);
+        button.setOnClickListener((v) ->
+        {
+            if (locationManager != null)
+            {
+                // Get location
+                Location location =
+                    locationManager.getLastKnownLocation(LocationManager
+                                                         .GPS_PROVIDER);
+                if (location != null)
+                {
+                    // Get point
+                    GeoPoint p = new GeoPoint(location.getLatitude(),
+                                                  location.getLongitude());
+                    // Centre map
+                    map.getController().animateTo(p);
+                }
+            }
+        });
 
         // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -241,17 +269,6 @@ public class Buses extends Activity
             .load(this, PreferenceManager.getDefaultSharedPreferences(this));
         map.onResume(); // needed for compass, my location overlays,
                         // v6.0.0 and up
-    
-        // IMapController mapController = map.getController();
-
-        // Zoom map
-        map.getController().setZoom(7.0);
-
-        // Get point
-        GeoPoint point = new GeoPoint(52.561928, -1.464854);
-
-        // Centre map
-        map.getController().setCenter(point);
 
         if (locationManager != null)
         {
@@ -280,6 +297,22 @@ public class Buses extends Activity
 
         if (locationManager != null)
             locationManager.removeUpdates(this);
+    }
+
+    // onSaveInstanceState
+    @Override
+    protected void onSaveInstanceState(Bundle outState)
+    {
+        super.onSaveInstanceState(outState);
+
+        if (location != null)
+        {
+            double lat = location.getLatitude();
+            double lng = location.getLongitude();
+
+            outState.putDouble(LATITUDE, lat);
+            outState.putDouble(LONGITUDE, lng);
+        }
     }
 
     // On create options menu
@@ -365,12 +398,10 @@ public class Buses extends Activity
     @Override
     public void onLocationChanged(Location location)
     {
-	IMapController mapController = map.getController();
-
 	// Zoom map once
 	if (!zoomed)
 	{
-	    mapController.setZoom(20.0);
+	    map.getController().setZoom(19.0);
 	    zoomed = true;
 	}
 
@@ -380,7 +411,8 @@ public class Buses extends Activity
 	// Centre map once
 	if (!located)
 	{
-	    mapController.setCenter(point);
+	    map.getController().setCenter(point);
+            button.setImageResource(R.drawable.ic_action_location_found);
 	    located = true;
 	}
 
@@ -402,8 +434,8 @@ public class Buses extends Activity
 	double lng = location.getLongitude();
 	double alt = location.getAltitude();
 
-	String latString = Location.convert(lat, Location.FORMAT_SECONDS);
-	String lngString = Location.convert(lng, Location.FORMAT_SECONDS);
+	String latString = Location.convert(lat, Location.FORMAT_DEGREES);
+	String lngString = Location.convert(lng, Location.FORMAT_DEGREES);
 
         List<String> rightList = new ArrayList<String>();
         rightList.add(String.format(Locale.getDefault(),
@@ -414,14 +446,9 @@ public class Buses extends Activity
                                        "Accuracy: %1.0fm", acc));
         rightOverlay.setText(rightList);
 
-	long   time = location.getTime();
+	long time = location.getTime();
 
-        String date;
-        if (scrolled)
-            date = dateFormat.format(new Date());
-
-        else
-            date = dateFormat.format(new Date(time));
+        String date = dateFormat.format(new Date());
 
         List<String> leftList = new ArrayList<String>();
         leftList.add(date);
@@ -430,11 +457,10 @@ public class Buses extends Activity
 	coord.toOSGB36();
 	OSRef OSCoord = coord.toOSRef();
 
-	if (true) // (OSCoord.isValid())
+	if (OSCoord.isValid())
 	{
 	    double east = OSCoord.getEasting();
 	    double north = OSCoord.getNorthing();
-	    // String OSString = OSCoord.toSixFigureString();
             String OSString =
                 OSCoord.getOsRefWithPrecisionOf(OSRef.Precision.SIX_DIGITS);
 
@@ -513,7 +539,7 @@ public class Buses extends Activity
         {
             // Start search activity
             Intent intent = new Intent(context, Search.class);
-            intent.putExtra(Buses.CODE, query);
+            intent.putExtra(CODE, query);
             startActivity(intent);
 
             // Close text search
@@ -528,15 +554,36 @@ public class Buses extends Activity
     private class GestureListener
         extends GestureDetector.SimpleOnGestureListener
     {
-        // onLongPress
-        @Override
-        public void onLongPress(MotionEvent e)
+        Context context;
+
+        // GestureListener
+        GestureListener(Context context)
         {
+            this.context = context;
+        }
+
+        // onSingleTapConfirmed
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent e)
+        {
+            // Get point
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
+
             if (BuildConfig.DEBUG)
                 Log.d(TAG, "Coords " + point.getLatitude() +
                       ", " + point.getLongitude());
+
+            // Construct query
+            String query = String.format(Locale.getDefault(), "point(%f,%f)",
+                                         point.getLatitude(),
+                                         point.getLongitude());
+            // Start search activity
+            Intent intent = new Intent(context, Search.class);
+            intent.putExtra(CODE, query);
+            startActivity(intent);
+
+            return true;
         }
     }
 

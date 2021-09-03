@@ -15,9 +15,9 @@ allprojects {
         google()
     }
 
-    tasks.withType(JavaCompile) {
-        options.deprecation = true
-    }
+    // tasks.withType(JavaCompile) {
+    //     options.deprecation = true
+    // }
 }
 
 apply plugin: 'com.android.application'
@@ -41,9 +41,9 @@ android {
     }
 
     lintOptions {
-	disable 'IconDensities', 'RtlHardcoded', 'ExpiredTargetSdkVersion',
+	disable 'RtlHardcoded', 'ExpiredTargetSdkVersion', 'MissingPermission',
             'NonConstantResourceId', 'ClickableViewAccessibility'
-	abortOnError false
+	// abortOnError false
     }
 }
 

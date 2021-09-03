@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<merge
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" 
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent">
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="ContentDescription">
+
   <org.osmdroid.views.MapView
       android:id="@+id/map"
       android:layout_width="fill_parent" 
       android:layout_height="fill_parent" />
-</LinearLayout>
+
+  <ImageButton
+      android:id="@+id/locate"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginRight="28dp"
+      android:layout_marginBottom="28dp"
+      android:layout_gravity="bottom|end"
+      android:background="@drawable/ic_button_background"
+      android:elevation="6dp"
+      android:src="@drawable/ic_action_location_searching"
+      tools:ignore="UnusedAttribute" />
+
+</merge>

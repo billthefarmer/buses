@@ -42,11 +42,11 @@ import java.util.Locale;
 public class Search extends Activity
 {
     public static final String MULTI_FORMAT =
-        "http://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
+        "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
         "?id=%s&submit=Search";
 
     public static final String SINGLE_FORMAT =
-        "http://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
+        "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
         "%s?currentPage=0";
 
     private WebView webview;
@@ -54,7 +54,6 @@ public class Search extends Activity
 
     // Called when the activity is first created
     @Override
-    @SuppressWarnings("deprecation")
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -96,6 +95,7 @@ public class Search extends Activity
 
                 // shouldOverrideUrlLoading
                 @Override
+                @SuppressWarnings("deprecation")
                 public boolean shouldOverrideUrlLoading (WebView view, 
                                                          String url)
                 {
