@@ -12,7 +12,7 @@ first on the list. Tap a link to get bus times from that stop.
 
 ## Search
 
-![Stops](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-stops.png)
+![Stops](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-stops.png) ![Times](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-times.png)
 
 There are several ways of finding bus times:
 
@@ -25,8 +25,6 @@ There are several ways of finding bus times:
     code on the bus stop sign, if it exists, and tap the button on the
     search widget or keyboard. This will take you straight to the bus
     times.
-
-![Times](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-times.png)
 
 ## Location
 The map shows a person icon in a blue shaded circle. The size of the
