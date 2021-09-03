@@ -88,8 +88,11 @@ public class Buses extends Activity
     public final static String CODE = "code";
 
     private final static String LOCATION = "location";
-    private final static String ZOOMLEVEL = "zoomlevel";
     private final static String MAPCENTRE = "mapcentre";
+    private final static String ZOOMLEVEL = "zoomlevel";
+    private final static String SCROLLED = "scrolled";
+    private final static String LOCATED = "located";
+    private final static String ZOOMED = "zoomed";
 
     private final static int REQUEST_PERMS = 1;
 
@@ -182,6 +185,11 @@ public class Buses extends Activity
 
         else
         {
+            // Get flags
+            located = savedInstanceState.getBoolean(LOCATED);
+            scrolled = savedInstanceState.getBoolean(SCROLLED);
+            zoomed = savedInstanceState.getBoolean(ZOOMED);
+
             // Get location
             location = savedInstanceState.getParcelable(LOCATION);
             last = location;
@@ -192,6 +200,7 @@ public class Buses extends Activity
             // Get centre
             Location centre = savedInstanceState.getParcelable(MAPCENTRE);
             GeoPoint point = new GeoPoint(centre);
+
             // Centre map
             map.getController().setCenter(point);
         }
@@ -338,13 +347,17 @@ public class Buses extends Activity
     {
         super.onSaveInstanceState(outState);
 
+        outState.putBoolean(LOCATED, located);
+        outState.putBoolean(SCROLLED, scrolled);
+        outState.putBoolean(ZOOMED, zoomed);
+
         outState.putParcelable(LOCATION, location);
-        outState.putDouble(ZOOMLEVEL, map.getZoomLevelDouble());
         IGeoPoint geopoint = map.getMapCenter();
         Location centre = new Location("MapView");
         centre.setLatitude(geopoint.getLatitude());
         centre.setLongitude(geopoint.getLongitude());
         outState.putParcelable(MAPCENTRE, centre);
+        outState.putDouble(ZOOMLEVEL, map.getZoomLevelDouble());
     }
 
     // On create options menu
@@ -431,23 +444,20 @@ public class Buses extends Activity
     @Override
     public void onLocationChanged(Location location)
     {
-	// Zoom map once
-	if (!zoomed)
-	{
-	    map.getController().zoomTo(19.0);
-	    zoomed = true;
-	}
-
 	// Get point
 	GeoPoint point = new GeoPoint(location);
 
-	// Centre map once
+	// Centre and zoom map once
 	if (!located)
 	{
-	    map.getController().setCenter(point);
+	    map.getController().animateTo(point, 19.0, null);
             button.setImageResource(R.drawable.ic_action_location_found);
 	    located = true;
+	    zoomed = true;
 	}
+
+        if (!scrolled && location.getSpeed() > 0.5)
+            map.getController().animateTo(point);
 
         if (scrolled)
             map.postDelayed(() ->
