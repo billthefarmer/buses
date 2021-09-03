@@ -2,7 +2,7 @@
 
 ![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
 
-This app is a gegraphical front end to and wrapper around
+This app is a geographical front end to and wrapper around
 the [NextBuses](https://nextbuses.mobi/) web site.
 
 ## Intro
@@ -11,6 +11,9 @@ map and a list of nearby stops. The one you tapped on should be the
 first on the list. Tap a link to get bus times from that stop.
 
 ## Search
+
+![Stops](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-stops.png)
+
 There are several ways of finding bus times:
 
  * **Tap the map** &ndash; This will send a geographic point to the
@@ -22,6 +25,8 @@ There are several ways of finding bus times:
     code on the bus stop sign, if it exists, and tap the button on the
     search widget or keyboard. This will take you straight to the bus
     times.
+
+![Times](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-times.png)
 
 ## Location
 The map shows a person icon in a blue shaded circle. The size of the
