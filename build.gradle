@@ -41,7 +41,7 @@ android {
     }
 
     lintOptions {
-	disable 'RtlHardcoded', 'ExpiredTargetSdkVersion', 'MissingPermission',
+	disable 'RtlHardcoded', 'ExpiredTargetSdkVersion',
             'NonConstantResourceId', 'ClickableViewAccessibility'
 	// abortOnError false
     }

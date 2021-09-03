@@ -88,8 +88,8 @@ public class Buses extends Activity
     public final static String CODE = "code";
 
     private final static String LOCATION = "location";
-    private final static String LATITUDE = "latitude";
-    private final static String LONGITUDE = "longitude";
+    private final static String ZOOMLEVEL = "zoomlevel";
+    private final static String MAPCENTRE = "mapcentre";
 
     private final static int REQUEST_PERMS = 1;
 
@@ -167,14 +167,34 @@ public class Buses extends Activity
         rightOverlay.setAlignBottom(false);
         rightOverlay.setAlignRight(true);
 
-        // Zoom map
-        map.getController().setZoom(7.0);
 
-        // Get point
-        GeoPoint point = new GeoPoint(52.561928, -1.464854);
+        if (savedInstanceState == null)
+        {
+            // Zoom map
+            map.getController().setZoom(7.0);
 
-        // Centre map
-        map.getController().setCenter(point);
+            // Get point
+            GeoPoint point = new GeoPoint(52.561928, -1.464854);
+
+            // Centre map
+            map.getController().setCenter(point);
+        }
+
+        else
+        {
+            // Get location
+            location = savedInstanceState.getParcelable(LOCATION);
+            last = location;
+
+            // Set zoom
+            map.getController().setZoom(savedInstanceState
+                                        .getDouble(ZOOMLEVEL));
+            // Get centre
+            Location centre = savedInstanceState.getParcelable(MAPCENTRE);
+            GeoPoint point = new GeoPoint(centre);
+            // Centre map
+            map.getController().setCenter(point);
+        }
 
         // Map listener
         map.addMapListener(new MapAdapter()
@@ -210,6 +230,18 @@ public class Buses extends Activity
         {
             if (locationManager != null)
             {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED)
+                {
+                    requestPermissions(new String[]
+                    {Manifest.permission.ACCESS_FINE_LOCATION,
+                     Manifest.permission.READ_EXTERNAL_STORAGE,
+                     Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                       REQUEST_PERMS);
+                    return;
+                }
+
                 // Get location
                 Location location =
                     locationManager.getLastKnownLocation(LocationManager
@@ -243,18 +275,6 @@ public class Buses extends Activity
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager)
                           getSystemService(LOCATION_SERVICE);
-
-        if (savedInstanceState != null)
-        {
-            double lat = savedInstanceState.getDouble(LATITUDE);
-            double lng = savedInstanceState.getDouble(LONGITUDE);
-
-            location = new Location(TAG);
-            location.setLatitude(lat);
-            location.setLongitude(lng);
-
-            last = location;
-        }
     }
 
     @Override
@@ -272,6 +292,18 @@ public class Buses extends Activity
 
         if (locationManager != null)
         {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
+            {
+                requestPermissions(new String[]
+                {Manifest.permission.ACCESS_FINE_LOCATION,
+                 Manifest.permission.READ_EXTERNAL_STORAGE,
+                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                   REQUEST_PERMS);
+                return;
+            }
+
             Location location =
                 locationManager.getLastKnownLocation(LocationManager
                                                      .GPS_PROVIDER);
@@ -283,6 +315,7 @@ public class Buses extends Activity
         }
     }
 
+    // onPause
     @Override
     public void onPause()
     {
@@ -301,18 +334,17 @@ public class Buses extends Activity
 
     // onSaveInstanceState
     @Override
-    protected void onSaveInstanceState(Bundle outState)
+    public void onSaveInstanceState(Bundle outState)
     {
         super.onSaveInstanceState(outState);
 
-        if (location != null)
-        {
-            double lat = location.getLatitude();
-            double lng = location.getLongitude();
-
-            outState.putDouble(LATITUDE, lat);
-            outState.putDouble(LONGITUDE, lng);
-        }
+        outState.putParcelable(LOCATION, location);
+        outState.putDouble(ZOOMLEVEL, map.getZoomLevelDouble());
+        IGeoPoint geopoint = map.getMapCenter();
+        Location centre = new Location("MapView");
+        centre.setLatitude(geopoint.getLatitude());
+        centre.setLongitude(geopoint.getLongitude());
+        outState.putParcelable(MAPCENTRE, centre);
     }
 
     // On create options menu
@@ -390,8 +422,9 @@ public class Buses extends Activity
                     grantResults[i] == PackageManager.PERMISSION_GRANTED)
                     // Acquire a reference to the system Location
                     // Manager
-                    locationManager =
-                        (LocationManager)getSystemService(LOCATION_SERVICE);
+                    if (locationManager == null)
+                        locationManager =
+                            (LocationManager)getSystemService(LOCATION_SERVICE);
         }
     }
 
@@ -401,7 +434,7 @@ public class Buses extends Activity
 	// Zoom map once
 	if (!zoomed)
 	{
-	    map.getController().setZoom(19.0);
+	    map.getController().zoomTo(19.0);
 	    zoomed = true;
 	}
 
@@ -570,12 +603,9 @@ public class Buses extends Activity
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
 
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "Coords " + point.getLatitude() +
-                      ", " + point.getLongitude());
-
             // Construct query
-            String query = String.format(Locale.getDefault(), "point(%f,%f)",
+            String query = String.format(Locale.getDefault(),
+                                         "point(%f,%f)",
                                          point.getLatitude(),
                                          point.getLongitude());
             // Start search activity
