@@ -1,4 +1,4 @@
-# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions)
+# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases)
 
 This app is a geographical front end to and wrapper around
 the GB [NextBuses](https://nextbuses.mobi/) web site.
