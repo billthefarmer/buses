@@ -1,4 +1,4 @@
-This app is a geographical front end to and wrapper around the UK <a href="https://nextbuses.mobi/" target='_blank'>NextBuses</a> web site.
+This app is a geographical front end to and wrapper around the GB <a href="https://nextbuses.mobi/" target='_blank'>NextBuses</a> web site.
 
 Scroll and zoom the map to find a bus stop, then…
 

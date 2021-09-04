@@ -1,1 +1,1 @@
-UK bus times app
+GB bus times app

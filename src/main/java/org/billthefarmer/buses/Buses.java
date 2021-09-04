@@ -212,10 +212,10 @@ public class Buses extends Activity
             {
                 if (located)
                 {
-                    IGeoPoint point = map.getMapCenter();
                     if (zoomed)
                         scrolled = true;
 
+                    IGeoPoint point = map.getMapCenter();
                     Location location = new Location("MapView");
                     location.setLatitude(point.getLatitude());
                     location.setLongitude(point.getLongitude());
@@ -258,8 +258,7 @@ public class Buses extends Activity
                 if (location != null)
                 {
                     // Get point
-                    GeoPoint p = new GeoPoint(location.getLatitude(),
-                                                  location.getLongitude());
+                    GeoPoint p = new GeoPoint(location);
                     // Centre map
                     map.getController().animateTo(p);
                 }
