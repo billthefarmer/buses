@@ -38,7 +38,7 @@ import android.widget.ProgressBar;
 
 import java.util.Locale;
 
-// SearchActivity
+// Search
 public class Search extends Activity
 {
     public static final String MULTI_FORMAT =
