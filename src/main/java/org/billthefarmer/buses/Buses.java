@@ -37,6 +37,7 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -52,6 +53,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ImageButton;
 import android.widget.SearchView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.osmdroid.api.IGeoPoint;
@@ -67,8 +69,11 @@ import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
+import java.lang.ref.WeakReference;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -77,11 +82,15 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
 
 public class Buses extends Activity
-    implements LocationListener
 {
     private final static String TAG = "Buses";
 
@@ -94,6 +103,21 @@ public class Buses extends Activity
     private final static String LOCATED = "located";
     private final static String ZOOMED = "zoomed";
 
+    public static final String MULTI_FORMAT =
+        "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
+        "?id=%s&submit=Search";
+
+    public static final String SINGLE_FORMAT =
+        "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
+        "%s?currentPage=0";
+
+    public static final String QUERY_FORMAT = "point(%f,%f)";
+    public static final String STOP_FORMAT = "%s, %s";
+    public static final String URL_FORMAT = "https://nextbuses.mobi%s";
+    public static final String BUS_FORMAT = "%s: %s";
+
+    public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
+
     private final static int REQUEST_PERMS = 1;
 
     private static final int SHORT_DELAY = 5000;
@@ -103,11 +127,12 @@ public class Buses extends Activity
     private MenuItem searchItem;
     private SearchView searchView;
     private ImageButton button;
+    private ProgressBar progressBar;
     private Location last = null;
     private Location location = null;
     private LocationManager locationManager;
     private DateFormat dateFormat;
-
+    private LocationListener listener;
     private MyLocationNewOverlay myLocation;
     private TextOverlay leftOverlay;
     private TextOverlay rightOverlay;
@@ -234,7 +259,7 @@ public class Buses extends Activity
             return false;
         });
 
-        button = (ImageButton) findViewById(R.id.locate);
+        button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
         {
             if (locationManager != null)
@@ -265,6 +290,8 @@ public class Buses extends Activity
             }
         });
 
+        progressBar = findViewById(R.id.progress);
+
         // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
         {
@@ -283,6 +310,48 @@ public class Buses extends Activity
         // Acquire a reference to the system Location Manager
         locationManager = (LocationManager)
                           getSystemService(LOCATION_SERVICE);
+
+        listener = new LocationListener()
+        {
+            @Override
+            public void onLocationChanged(Location location)
+            {
+                // Get point
+                GeoPoint point = new GeoPoint(location);
+
+                // Centre and zoom map once
+                if (!located)
+                {
+                    map.getController().animateTo(point, 19.0, null);
+                    button.setImageResource(R.drawable
+                                            .ic_action_location_found);
+                    located = true;
+                    zoomed = true;
+                }
+
+                if (!scrolled && location.getSpeed() > 0.5)
+                    map.getController().animateTo(point);
+
+                if (scrolled)
+                    map.postDelayed(() ->
+                                    {
+                                        scrolled = false;
+                                    }, LONG_DELAY);
+
+                else
+                    showLocation(location);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status,
+                                        Bundle extras) {}
+            @Override
+            public void onProviderEnabled(String provider) {}
+
+            @Override
+            public void onProviderDisabled(String provider) {}
+
+        };
     }
 
     @Override
@@ -318,8 +387,9 @@ public class Buses extends Activity
             if (location != null)
                 showLocation(location);
 
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-						   SHORT_DELAY, 0, this);
+            locationManager
+                .requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                                        SHORT_DELAY, 0, listener);
         }
     }
 
@@ -337,7 +407,7 @@ public class Buses extends Activity
                         // v6.0.0 and up
 
         if (locationManager != null)
-            locationManager.removeUpdates(this);
+            locationManager.removeUpdates(listener);
     }
 
     // onSaveInstanceState
@@ -440,34 +510,6 @@ public class Buses extends Activity
         }
     }
 
-    @Override
-    public void onLocationChanged(Location location)
-    {
-	// Get point
-	GeoPoint point = new GeoPoint(location);
-
-	// Centre and zoom map once
-	if (!located)
-	{
-	    map.getController().animateTo(point, 19.0, null);
-            button.setImageResource(R.drawable.ic_action_location_found);
-	    located = true;
-	    zoomed = true;
-	}
-
-        if (!scrolled && location.getSpeed() > 0.5)
-            map.getController().animateTo(point);
-
-        if (scrolled)
-            map.postDelayed(() ->
-            {
-                scrolled = false;
-            }, LONG_DELAY);
-
-        else
-            showLocation(location);
-    }
-
     // Show location
     private void showLocation(Location location)
     {
@@ -555,6 +597,20 @@ public class Buses extends Activity
             text.setMovementMethod(LinkMovementMethod.getInstance());
     }
 
+    // alertDialog
+    private void alertDialog(int title, String message, int neutralButton)
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+
+        // Add the buttons
+        builder.setNeutralButton(neutralButton, null);
+
+        // Create the AlertDialog
+        builder.show();
+    }
+
     // QueryTextListener
     private class QueryTextListener
         implements SearchView.OnQueryTextListener
@@ -596,12 +652,12 @@ public class Buses extends Activity
     private class GestureListener
         extends GestureDetector.SimpleOnGestureListener
     {
-        Context context;
+        Buses buses;
 
         // GestureListener
-        GestureListener(Context context)
+        GestureListener(Buses buses)
         {
-            this.context = context;
+            this.buses = buses;
         }
 
         // onSingleTapConfirmed
@@ -614,24 +670,209 @@ public class Buses extends Activity
 
             // Construct query
             String query = String.format(Locale.getDefault(),
-                                         "point(%f,%f)",
+                                         QUERY_FORMAT,
                                          point.getLatitude(),
                                          point.getLongitude());
-            // Start search activity
-            Intent intent = new Intent(context, Search.class);
-            intent.putExtra(CODE, query);
-            startActivity(intent);
 
+            String url = String.format(Locale.getDefault(),
+                                       MULTI_FORMAT, query);
+                                       
+            StopsTask stops = new StopsTask(buses);
+            stops.execute(url);
+
+            progressBar.setVisibility(View.VISIBLE);
             return true;
         }
     }
 
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {}
+    // StopsTask
+    private static class StopsTask
+            extends AsyncTask<String, Void, Document>
+    {
+        private WeakReference<Buses> busesWeakReference;
 
-    @Override
-    public void onProviderEnabled(String provider) {}
+        // FindTask
+        public StopsTask(Buses buses)
+        {
+            busesWeakReference = new WeakReference<>(buses);
+        }
 
-    @Override
-    public void onProviderDisabled(String provider) {}
+        // doInBackground
+        @Override
+        protected Document doInBackground(String... params)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return null;
+
+            String url = params[0];
+            // Do web search
+            try
+            {
+                Document doc = Jsoup.connect(url).get();
+                return doc;
+            }
+
+            catch (Exception e)
+            {
+                buses.runOnUiThread(() ->
+                    buses.alertDialog(R.string.appName,
+                                      e.getMessage(),
+                                      android.R.string.ok));
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        // onPostExecute
+        @Override
+        protected void onPostExecute(Document doc)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            if (doc == null)
+                return;
+
+            String title = doc.select("h2").first().text();
+            if (title.matches(POINT_PATTERN))
+            {
+                Element td = doc.select("td.Number").first();
+                td = td.nextElementSibling();
+                Element p = td.select("p").first();
+                String url =
+                    String.format(Locale.getDefault(), URL_FORMAT,
+                                  p.select("a[href]").first().attr("href"));
+
+                BusesTask task = new BusesTask(buses);
+                task.execute(url);
+
+                buses.progressBar.setVisibility(View.VISIBLE);
+                return;
+            }
+
+            // Build dialog
+            AlertDialog.Builder builder = new AlertDialog.Builder(buses);
+            builder.setTitle(title);
+
+            List<String> list = new ArrayList<>();
+            List<String> urls = new ArrayList<>();
+            Elements tds = doc.select("td.Number");
+            for (Element td: tds)
+            {
+                td = td.nextElementSibling();
+                Element p = td.select("p").first();
+                String url =
+                    String.format(Locale.getDefault(), URL_FORMAT,
+                                  p.select("a[href]").first().attr("href"));
+                urls.add(url);
+                String s =
+                    String.format(Locale.getDefault(), STOP_FORMAT,
+                                  p.select("a[href]").first().text(),
+                                  p.nextElementSibling().text());
+                list.add(s);
+            }
+
+            String[] stops = list.toArray(new String[0]);
+            builder.setItems(stops, (dialog, which) ->
+            {
+                if (BuildConfig.DEBUG)
+                    Log.d(TAG, "Stop " + list.get(which));
+
+                BusesTask task = new BusesTask(buses);
+                task.execute(urls.get(which));
+
+                buses.progressBar.setVisibility(View.VISIBLE);
+            });
+
+            builder.setNegativeButton(android.R.string.cancel, null);
+            builder.show();
+
+            buses.progressBar.setVisibility(View.GONE);
+        }
+    }
+
+    // BusesTask
+    private static class BusesTask
+            extends AsyncTask<String, Void, Document>
+    {
+        private WeakReference<Buses> busesWeakReference;
+
+        // BusesTask
+        public BusesTask(Buses buses)
+        {
+            busesWeakReference = new WeakReference<>(buses);
+        }
+
+        // doInBackground
+        @Override
+        protected Document doInBackground(String... params)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return null;
+
+            String url = params[0];
+            // Do web search
+            try
+            {
+                Document doc = Jsoup.connect(url).get();
+                return doc;
+            }
+
+            catch (Exception e)
+            {
+                buses.runOnUiThread(() ->
+                    buses.alertDialog(R.string.appName,
+                                      e.getMessage(),
+                                      android.R.string.ok));
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        // onPostExecute
+        @Override
+        protected void onPostExecute(Document doc)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            if (doc == null)
+                return;
+
+            // Build dialog
+            AlertDialog.Builder builder = new AlertDialog.Builder(buses);
+            String title = doc.select("h2").first().text();
+            builder.setTitle(title);
+
+            List<String> list = new ArrayList<>();
+            Elements tds = doc.select("td.Number");
+            for (Element td: tds)
+            {
+                String n = td.select("p.Stops > a[href]").text();
+                td = td.nextElementSibling();
+                String s = td.select("p.Stops").first().text();
+                String bus = String.format(Locale.getDefault(), BUS_FORMAT,
+                                           n, s);
+                list.add(bus);
+            }
+
+            String[] busez = list.toArray(new String[0]);
+            builder.setItems(busez, (dialog, which) ->
+            {
+                if (BuildConfig.DEBUG)
+                    Log.d(TAG, "Bus " + list.get(which));
+            });
+
+            builder.setNegativeButton(android.R.string.ok, null);
+            builder.show();
+
+            buses.progressBar.setVisibility(View.GONE);
+        }
+    }
 }

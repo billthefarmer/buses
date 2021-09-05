@@ -21,4 +21,13 @@
       android:src="@drawable/ic_action_location_searching"
       tools:ignore="UnusedAttribute" />
 
+  <ProgressBar
+      android:id="@+id/progress"
+      android:visibility="gone"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:elevation="6dp"
+      tools:ignore="UnusedAttribute" />
+
 </merge>
