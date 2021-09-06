@@ -779,14 +779,39 @@ public class Buses extends Activity
                 list.add(s);
             }
 
+            Elements italics = doc.select("p.Number > i");
+            Elements links = doc.select("p.Stops > a[href]");
+            if (urls.isEmpty())
+            {
+                for (Element link: links)
+                {
+                    String url =
+                        String.format(Locale.getDefault(), URL_FORMAT,
+                                      link.attr("href"));
+                    urls.add(url);
+                    String s = link.text();
+                    list.add(s);
+                }
+            }
+
             String[] stops = list.toArray(new String[0]);
             builder.setItems(stops, (dialog, which) ->
             {
                 if (BuildConfig.DEBUG)
                     Log.d(TAG, "Stop " + list.get(which));
 
-                BusesTask task = new BusesTask(buses);
-                task.execute(urls.get(which));
+                if (!italics.isEmpty() &&
+                    italics.get(which).hasClass("mx-nptg_locality"))
+                {
+                    StopsTask task = new StopsTask(buses);
+                    task.execute(urls.get(which));
+                }
+
+                else
+                {
+                    BusesTask task = new BusesTask(buses);
+                    task.execute(urls.get(which));
+                }
 
                 buses.progressBar.setVisibility(View.VISIBLE);
             });
