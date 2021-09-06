@@ -617,12 +617,12 @@ public class Buses extends Activity
     private class QueryTextListener
         implements SearchView.OnQueryTextListener
     {
-        private Context context;
+        private Buses buses;
 
         // QueryTextListener
-        QueryTextListener(Context context)
+        QueryTextListener(Buses buses)
         {
-            this.context = context;
+            this.buses = buses;
         }
 
         // onQueryTextChange
@@ -638,9 +638,17 @@ public class Buses extends Activity
         public boolean onQueryTextSubmit(String query)
         {
             // Start search activity
-            Intent intent = new Intent(context, Search.class);
-            intent.putExtra(CODE, query);
-            startActivity(intent);
+            // Intent intent = new Intent(context, Search.class);
+            // intent.putExtra(CODE, query);
+            // startActivity(intent);
+
+            String url = String.format(Locale.getDefault(),
+                                       MULTI_FORMAT, query);
+                                       
+            StopsTask task = new StopsTask(buses);
+            task.execute(url);
+
+            progressBar.setVisibility(View.VISIBLE);
 
             // Close text search
             if (searchItem != null && searchItem.isActionViewExpanded())
@@ -679,8 +687,8 @@ public class Buses extends Activity
             String url = String.format(Locale.getDefault(),
                                        MULTI_FORMAT, query);
                                        
-            StopsTask stops = new StopsTask(buses);
-            stops.execute(url);
+            StopsTask task = new StopsTask(buses);
+            task.execute(url);
 
             progressBar.setVisibility(View.VISIBLE);
             return true;
