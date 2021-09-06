@@ -761,8 +761,6 @@ public class Buses extends Activity
 
             List<String> list = new ArrayList<>();
             List<String> urls = new ArrayList<>();
-            Elements tds = doc.select("td.Number");
-
             for (Element td: tds)
             {
                 td = td.nextElementSibling();
