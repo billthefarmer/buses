@@ -536,13 +536,13 @@ public class Buses extends Activity
 
         List<String> leftList = new ArrayList<String>();
         leftList.add(date);
+        try
+        {
+            LatLng coord = new LatLng(lat, lng);
+            coord.toOSGB36();
 
-	LatLng coord = new LatLng(lat, lng);
-	coord.toOSGB36();
-	OSRef OSCoord = coord.toOSRef();
+            OSRef OSCoord = coord.toOSRef();
 
-	if (OSCoord.isValid())
-	{
 	    double east = OSCoord.getEasting();
 	    double north = OSCoord.getNorthing();
             String OSString =
@@ -552,6 +552,8 @@ public class Buses extends Activity
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
 	}
+
+        catch (Exception e) {}
 
         leftOverlay.setText(leftList);
         map.invalidate();
@@ -737,10 +739,10 @@ public class Buses extends Activity
                 return;
 
             String title = doc.select("h2").first().text();
-            if (title.matches(POINT_PATTERN))
+            Elements tds = doc.select("td.Number");
+            if (tds.first() != null && title.matches(POINT_PATTERN))
             {
-                Element td = doc.select("td.Number").first();
-                td = td.nextElementSibling();
+                Element td = tds.first().nextElementSibling();
                 Element p = td.select("p").first();
                 String url =
                     String.format(Locale.getDefault(), URL_FORMAT,
@@ -760,6 +762,7 @@ public class Buses extends Activity
             List<String> list = new ArrayList<>();
             List<String> urls = new ArrayList<>();
             Elements tds = doc.select("td.Number");
+
             for (Element td: tds)
             {
                 td = td.nextElementSibling();
@@ -863,11 +866,7 @@ public class Buses extends Activity
             }
 
             String[] busez = list.toArray(new String[0]);
-            builder.setItems(busez, (dialog, which) ->
-            {
-                if (BuildConfig.DEBUG)
-                    Log.d(TAG, "Bus " + list.get(which));
-            });
+            builder.setItems(busez, null);
 
             builder.setNegativeButton(android.R.string.ok, null);
             builder.show();

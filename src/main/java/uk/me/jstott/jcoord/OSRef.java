@@ -596,22 +596,4 @@ public class OSRef extends CoordinateSystem {
     this.northing = northing;
 
   }
-
-    /** 
-     * Check within the OS grid
-     *
-     * @return whether valid
-     * @since ?
-     */
-    public boolean isValid()
-    {
-	// Some of this rectangle is in Ireland and Northern France,
-	// but good enough. This is from the back cover of an old OS
-	// map.
-	if ((easting >= 0.0) && (easting <= 800000.0) &&
-	    (northing >= 0.0) && (northing <= 1400000.0))
-	    return true;
-
-	return false;
-    }
 }
