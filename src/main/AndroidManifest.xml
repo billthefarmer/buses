@@ -36,11 +36,6 @@
     </activity>
 
     <activity
-        android:name="Search"
-        android:label="@string/appName"
-        android:windowSoftInputMode="stateHidden" />
-
-    <activity
         android:name="Help"
         android:label="@string/appName"
         android:windowSoftInputMode="stateHidden" />
