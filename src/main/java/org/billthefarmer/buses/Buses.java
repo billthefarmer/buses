@@ -637,11 +637,6 @@ public class Buses extends Activity
         @Override
         public boolean onQueryTextSubmit(String query)
         {
-            // Start search activity
-            // Intent intent = new Intent(context, Search.class);
-            // intent.putExtra(CODE, query);
-            // startActivity(intent);
-
             String url = String.format(Locale.getDefault(),
                                        MULTI_FORMAT, query);
                                        
