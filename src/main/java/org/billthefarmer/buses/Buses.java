@@ -290,6 +290,9 @@ public class Buses extends Activity
             }
         });
 
+        if (located)
+            button.setImageResource(R.drawable.ic_action_location_found);
+
         progressBar = findViewById(R.id.progress);
 
         // Check permissions
@@ -334,9 +337,9 @@ public class Buses extends Activity
 
                 if (scrolled)
                     map.postDelayed(() ->
-                                    {
-                                        scrolled = false;
-                                    }, LONG_DELAY);
+                    {
+                        scrolled = false;
+                    }, LONG_DELAY);
 
                 else
                     showLocation(location);
