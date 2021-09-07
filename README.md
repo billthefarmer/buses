@@ -1,14 +1,12 @@
 # ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases)
 
-This app is a geographical front end to and wrapper around
-the GB [NextBuses](https://nextbuses.mobi/) web site.
+Geographical GB bus times lookup app.
 
 ![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
 
 ## Intro
-Scroll and zoom the map to find a bus stop and tap the map to get a
-map and a list of nearby stops. The one you tapped on should be the
-first on the list. Tap a link to get bus times from that stop.
+Scroll and zoom the map to find a bus stop and tap the map to get bus
+times from that stop.
 
 ## Search
 
@@ -16,15 +14,15 @@ first on the list. Tap a link to get bus times from that stop.
 
 There are several ways of finding bus times:
 
- * **Tap the map** &ndash; This will send a geographic point to the
-    NextBuses web site. This will show a map and list.
+ * **Tap the map** &ndash; This will show a list of bus times from the
+    nearest stop.
  * **Tap the search button** &ndash; Type in a street name and town, or
     postcode and tap the button on the search widget or keyboard. This
-    will show a map and list.
- * **Tap the search button** &ndash; Type in the eight character
-    code on the bus stop sign, if it exists, and tap the button on the
-    search widget or keyboard. This will take you straight to the bus
-    times.
+    will show a list of bus stops.
+ * **Tap the search button** &ndash; Type in the eight character code
+    on the bus stop sign, if it exists, and tap the button on the
+    search widget or keyboard. This will show a list of bus times from
+    that stop.
 
 ## Location
 The map shows a person icon in a blue shaded circle. The size of the

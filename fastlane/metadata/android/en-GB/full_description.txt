@@ -1,7 +1,5 @@
-This app is a geographical front end to and wrapper around the GB <a href="https://nextbuses.mobi/" target='_blank'>NextBuses</a> web site.
-
 Scroll and zoom the map to find a bus stop, then…
 
- * <b>Tap the map</b> &ndash; This will send a geographic point to the NextBuses web site. This will show a map and list.
- * <b>Tap the search button</b> &ndash; Type in a street name and town, or postcode and tap the button on the search widget or keyboard. This will show a map and list.
- * <b>Tap the search button</b> &ndash; Type in the eight character code on the bus stop sign, if it exists, and tap the button on the search widget or keyboard. This will take you straight to the bus times.
+ * <b>Tap the map</b> &ndash; This will show a list of bus times from the nearest stop.
+ * <b>Tap the search button</b> &ndash; Type in a street name and town, or postcode and tap the button on the search widget or keyboard. This will a list of bus stops.
+ * <b>Tap the search button</b> &ndash; Type in the eight character code on the bus stop sign, if it exists, and tap the button on the search bar or keyboard. This show a list of bus times from that stop.

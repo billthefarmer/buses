@@ -1,1 +1,1 @@
-GB bus times app
+Geographical GB bus times lookup app
