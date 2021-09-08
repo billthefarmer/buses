@@ -117,6 +117,7 @@ public class Buses extends Activity
     public static final String BUS_FORMAT = "%s: %s";
 
     public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
+    public static final String SEARCH_PATTERN = ".*searchMap=true.*";
 
     private final static int REQUEST_PERMS = 1;
 
@@ -724,9 +725,12 @@ public class Buses extends Activity
             catch (Exception e)
             {
                 buses.runOnUiThread(() ->
+                {
                     buses.alertDialog(R.string.appName,
                                       e.getMessage(),
-                                      android.R.string.ok));
+                                      android.R.string.ok);
+                    buses.progressBar.setVisibility(View.GONE);
+                });
                 e.printStackTrace();
             }
 
@@ -791,6 +795,8 @@ public class Buses extends Activity
                     String url =
                         String.format(Locale.getDefault(), URL_FORMAT,
                                       link.attr("href"));
+                    if (url.matches(SEARCH_PATTERN))
+                        continue;
                     urls.add(url);
                     String s = link.text();
                     list.add(s);
@@ -804,15 +810,15 @@ public class Buses extends Activity
                     Log.d(TAG, "Stop " + list.get(which));
 
                 if (!italics.isEmpty() &&
-                    italics.get(which).hasClass("mx-nptg_locality"))
+                    italics.get(which).hasClass("mx-bus_stop"))
                 {
-                    StopsTask task = new StopsTask(buses);
+                    BusesTask task = new BusesTask(buses);
                     task.execute(urls.get(which));
                 }
 
                 else
                 {
-                    BusesTask task = new BusesTask(buses);
+                    StopsTask task = new StopsTask(buses);
                     task.execute(urls.get(which));
                 }
 
@@ -857,9 +863,12 @@ public class Buses extends Activity
             catch (Exception e)
             {
                 buses.runOnUiThread(() ->
+                {
                     buses.alertDialog(R.string.appName,
                                       e.getMessage(),
-                                      android.R.string.ok));
+                                      android.R.string.ok);
+                    buses.progressBar.setVisibility(View.GONE);
+                });
                 e.printStackTrace();
             }
 
