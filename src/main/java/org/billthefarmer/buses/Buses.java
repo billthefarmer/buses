@@ -118,6 +118,11 @@ public class Buses extends Activity
 
     public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
     public static final String SEARCH_PATTERN = ".*searchMap=true.*";
+    public static final String STOP_PATTERN =
+        "((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|" +
+        "sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|" +
+        "dbs|yny|dur|soa|dby|tel|crm|sot|wsx|lan|esu|lec|suf|esx|nwm|dlo|" +
+        "lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}";
 
     private final static int REQUEST_PERMS = 1;
 
@@ -296,25 +301,6 @@ public class Buses extends Activity
 
         progressBar = findViewById(R.id.progress);
 
-        // Check permissions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-        {
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-            {
-                requestPermissions(new String[]
-                {Manifest.permission.ACCESS_FINE_LOCATION,
-                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                   REQUEST_PERMS);
-                return;
-            }
-        }
-
-        // Acquire a reference to the system Location Manager
-        locationManager = (LocationManager)
-                          getSystemService(LOCATION_SERVICE);
-
         listener = new LocationListener()
         {
             @Override
@@ -356,6 +342,25 @@ public class Buses extends Activity
             public void onProviderDisabled(String provider) {}
 
         };
+
+        // Check permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
+            {
+                requestPermissions(new String[]
+                {Manifest.permission.ACCESS_FINE_LOCATION,
+                 Manifest.permission.READ_EXTERNAL_STORAGE,
+                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                   REQUEST_PERMS);
+                return;
+            }
+        }
+
+        // Acquire a reference to the system Location Manager
+        locationManager = (LocationManager)
+                          getSystemService(LOCATION_SERVICE);
     }
 
     @Override
@@ -641,11 +646,22 @@ public class Buses extends Activity
         @Override
         public boolean onQueryTextSubmit(String query)
         {
-            String url = String.format(Locale.getDefault(),
-                                       MULTI_FORMAT, query);
-                                       
-            StopsTask task = new StopsTask(buses);
-            task.execute(url);
+            if (query.matches(STOP_PATTERN))
+            {
+                String url = String.format(Locale.getDefault(),
+                                           SINGLE_FORMAT, query);
+                BusesTask task = new BusesTask(buses);
+                task.execute(url);
+            }
+
+            else
+            {
+                String url = String.format(Locale.getDefault(),
+                                           MULTI_FORMAT, query);
+
+                StopsTask task = new StopsTask(buses);
+                task.execute(url);
+            }
 
             progressBar.setVisibility(View.VISIBLE);
 

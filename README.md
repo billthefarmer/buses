@@ -1,13 +1,13 @@
-# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases)
+# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases) [![Available on F-Droid](https://f-droid.org/wiki/images/c/ca/F-Droid-button_available-on_smaller.png)](https://f-droid.org/packages/org.billthefarmer.buses/)
 
 Geographical GB bus times lookup app.
 
 ### Non-free network services
-Unfortunately, this app had been tagged by F-Droid as promoting non-free
-network services. Actually, this app doesn't promote anything apart from
-buses. It does use a web site to get it's data, but so do several other
-bus times apps for various locations also on F-Droid which haven't been
-tagged.
+Unfortunately, this app had been tagged by F-Droid as promoting
+non-free network services. Actually, this app doesn't promote anything
+apart from buses. It does use a web site to get it's data, but then so
+do several other bus times apps for various locations also on F-Droid
+which haven't been tagged.
 
 ![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
 
