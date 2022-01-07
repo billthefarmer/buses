@@ -1,4 +1,5 @@
-# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases) [![Available on F-Droid](https://f-droid.org/wiki/images/c/ca/F-Droid-button_available-on_smaller.png)](https://f-droid.org/packages/org.billthefarmer.buses/)
+# ![Logo](src/main/res/drawable-hdpi/ic_launcher.png) Buses [![.github/workflows/main.yml](https://github.com/billthefarmer/crossword/workflows/.github/workflows/main.yml/badge.svg)](https://github.com/billthefarmer/buses/actions) [![Release](https://img.shields.io/github/release/billthefarmer/buses.svg?logo=github)](https://github.com/billthefarmer/buses/releases)
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.svg" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/org.billthefarmer.buses/)
 
 Geographical GB bus times lookup app.
 
