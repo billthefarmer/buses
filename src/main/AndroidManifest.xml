@@ -27,7 +27,6 @@
 
     <activity
         android:name="Buses"
-        android:label="@string/appName"
         android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -37,7 +36,6 @@
 
     <activity
         android:name="Help"
-        android:label="@string/appName"
         android:windowSoftInputMode="stateHidden" />
 
   </application>

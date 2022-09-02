@@ -396,7 +396,9 @@ public class Buses extends Activity
             if (location != null)
                 showLocation(location);
 
-            locationManager.requestSingleUpdate(provider, listener, null);
+            locationManager
+                .requestSingleUpdate(LocationManager.GPS_PROVIDER,
+                                     listener, null);
             locationManager
                 .requestLocationUpdates(LocationManager.GPS_PROVIDER,
                                         SHORT_DELAY, 0, listener);
