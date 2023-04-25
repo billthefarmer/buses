@@ -154,20 +154,21 @@ public class Buses extends Activity
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
+        Context context = getApplicationContext();
         Configuration.getInstance()
             .setUserAgentValue(BuildConfig.APPLICATION_ID);
         // load/initialize the osmdroid configuration
         Configuration.getInstance()
-            .load(this, PreferenceManager.getDefaultSharedPreferences(this));
+            .load(context, PreferenceManager
+                  .getDefaultSharedPreferences(context));
 
         // inflate and create the map
         setContentView(R.layout.main);
 
         dateFormat = DateFormat.getDateTimeInstance();
 
-        map = (MapView) findViewById(R.id.map);
-
+        // Set up the map
+        map = (MapView)findViewById(R.id.map);
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.getZoomController()
             .setVisibility(CustomZoomButtonsController
@@ -771,14 +772,24 @@ public class Buses extends Activity
             Elements tds = doc.select("td.Number");
             if (tds.first() != null && title.matches(POINT_PATTERN))
             {
-                Element td = tds.first().nextElementSibling();
-                Element p = td.select("p").first();
-                String url =
-                    String.format(Locale.getDefault(), URL_FORMAT,
-                                  p.select("a[href]").first().attr("href"));
+                try
+                {
+                    Element td = tds.first().nextElementSibling();
+                    Element p = td.select("p").first();
+                    String url =
+                        String.format(Locale.getDefault(), URL_FORMAT,
+                                      p.select("a[href]").first().attr("href"));
 
-                BusesTask task = new BusesTask(buses);
-                task.execute(url);
+                    BusesTask task = new BusesTask(buses);
+                    task.execute(url);
+                }
+
+                catch (Exception e)
+                {
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "StopsTask " + tds.first().outerHtml());
+                    e.printStackTrace();
+                }
 
                 buses.progressBar.setVisibility(View.VISIBLE);
                 return;
@@ -790,35 +801,63 @@ public class Buses extends Activity
 
             List<String> list = new ArrayList<>();
             List<String> urls = new ArrayList<>();
-            for (Element td: tds)
+
+            // Location
+            if (tds.isEmpty())
             {
-                td = td.nextElementSibling();
-                Element p = td.select("p").first();
-                String url =
-                    String.format(Locale.getDefault(), URL_FORMAT,
-                                  p.select("a[href]").first().attr("href"));
-                urls.add(url);
-                String s =
-                    String.format(Locale.getDefault(), STOP_FORMAT,
-                                  p.select("a[href]").first().text(),
-                                  p.nextElementSibling().text());
-                list.add(s);
+                Elements links = doc.select("p.Stops > a[href]");
+
+                try
+                {
+                    for (Element link: links)
+                    {
+                        String url =
+                            String.format(Locale.getDefault(), URL_FORMAT,
+                                          link.attr("href"));
+                        if (url.matches(SEARCH_PATTERN))
+                            continue;
+                        urls.add(url);
+                        String s = link.text();
+                        list.add(s);
+                    }
+                }
+
+                catch (Exception e)
+                {
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "StopsTask " + links.first()
+                              .parent().outerHtml());
+                    e.printStackTrace();
+                }
             }
 
-            Elements italics = doc.select("p.Number > i");
-            Elements links = doc.select("p.Stops > a[href]");
-            if (urls.isEmpty())
+            else
             {
-                for (Element link: links)
+                try
                 {
-                    String url =
-                        String.format(Locale.getDefault(), URL_FORMAT,
-                                      link.attr("href"));
-                    if (url.matches(SEARCH_PATTERN))
-                        continue;
-                    urls.add(url);
-                    String s = link.text();
-                    list.add(s);
+                    for (Element td: tds)
+                    {
+                        td = td.nextElementSibling();
+                        Element p = td.select("p").first();
+                        String url =
+                            String.format(Locale.getDefault(), URL_FORMAT,
+                                          p.select("a[href]").first()
+                                          .attr("href"));
+                        urls.add(url);
+                        String s =
+                            String.format(Locale.getDefault(), STOP_FORMAT,
+                                          p.select("a[href]").first().text(),
+                                          p.nextElementSibling().text());
+                        list.add(s);
+                    }
+                }
+
+                catch (Exception e)
+                {
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "StopsTask " + tds.first()
+                              .parent().outerHtml());
+                    e.printStackTrace();
                 }
             }
 
@@ -828,16 +867,15 @@ public class Buses extends Activity
                 if (BuildConfig.DEBUG)
                     Log.d(TAG, "Stop " + list.get(which));
 
-                if (!italics.isEmpty() &&
-                    italics.get(which).hasClass("mx-bus_stop"))
+                if (tds.isEmpty())
                 {
-                    BusesTask task = new BusesTask(buses);
+                    StopsTask task = new StopsTask(buses);
                     task.execute(urls.get(which));
                 }
 
                 else
                 {
-                    StopsTask task = new StopsTask(buses);
+                    BusesTask task = new BusesTask(buses);
                     task.execute(urls.get(which));
                 }
 
