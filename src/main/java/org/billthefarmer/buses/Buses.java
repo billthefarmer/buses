@@ -82,6 +82,8 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.json.JSONArray;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -92,16 +94,18 @@ import uk.me.jstott.jcoord.OSRef;
 
 public class Buses extends Activity
 {
-    private final static String TAG = "Buses";
+    public static final String TAG = "Buses";
 
-    public final static String CODE = "code";
+    public static final String PREF_URL = "pref_url";
+    public static final String PREF_TITLE = "pref_title";
+    public static final String PREF_LIST = "pref_list";
 
-    private final static String LOCATION = "location";
-    private final static String MAPCENTRE = "mapcentre";
-    private final static String ZOOMLEVEL = "zoomlevel";
-    private final static String SCROLLED = "scrolled";
-    private final static String LOCATED = "located";
-    private final static String ZOOMED = "zoomed";
+    public static final String LOCATION = "location";
+    public static final String MAPCENTRE = "mapcentre";
+    public static final String ZOOMLEVEL = "zoomlevel";
+    public static final String SCROLLED = "scrolled";
+    public static final String LOCATED = "located";
+    public static final String ZOOMED = "zoomed";
 
     public static final String MULTI_FORMAT =
         "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
@@ -114,7 +118,7 @@ public class Buses extends Activity
     public static final String QUERY_FORMAT = "point(%f,%f)";
     public static final String STOP_FORMAT = "%s, %s";
     public static final String URL_FORMAT = "https://nextbuses.mobi%s";
-    public static final String BUS_FORMAT = "%s: %s";
+    public static final String BUS_FORMAT = "%3s: %s";
 
     public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
     public static final String SEARCH_PATTERN = ".*searchMap=true.*";
@@ -705,7 +709,7 @@ public class Buses extends Activity
 
             String url = String.format(Locale.getDefault(),
                                        MULTI_FORMAT, query);
-                                       
+
             StopsTask task = new StopsTask(buses);
             task.execute(url);
 
@@ -891,7 +895,7 @@ public class Buses extends Activity
 
     // BusesTask
     private static class BusesTask
-            extends AsyncTask<String, Void, Document>
+            extends AsyncTask<String, String, Document>
     {
         private WeakReference<Buses> busesWeakReference;
 
@@ -910,6 +914,8 @@ public class Buses extends Activity
                 return null;
 
             String url = params[0];
+            publishProgress(url);
+
             // Do web search
             try
             {
@@ -930,6 +936,28 @@ public class Buses extends Activity
             }
 
             return null;
+        }
+
+        // On progress update
+        @Override
+        protected void onProgressUpdate(String... urls)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            // Get context
+            Context context = buses.getApplicationContext();
+            // Get preferences
+            SharedPreferences preferences =
+                PreferenceManager.getDefaultSharedPreferences(context);
+            // Get editor
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(PREF_URL, urls[0]);
+            editor.apply();
+
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "Url " + urls[0]);
         }
 
         // onPostExecute
@@ -965,6 +993,24 @@ public class Buses extends Activity
 
             builder.setNegativeButton(android.R.string.ok, null);
             builder.show();
+
+            // Get context
+            Context context = buses.getApplicationContext();
+            // Get preferences
+            SharedPreferences preferences =
+                PreferenceManager.getDefaultSharedPreferences(context);
+            // Get editor
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(PREF_TITLE, title);
+            JSONArray busArray = new JSONArray(list);
+            editor.putString(PREF_LIST, busArray.toString());
+            editor.apply();
+
+            if (BuildConfig.DEBUG)
+            {
+                Log.d(TAG, "Title " + title);
+                Log.d(TAG, "List " + busArray.toString());
+            }
 
             buses.progressBar.setVisibility(View.GONE);
         }

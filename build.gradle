@@ -43,12 +43,12 @@ android {
 
     lintOptions {
 	disable 'RtlHardcoded', 'ExpiredTargetSdkVersion', 'AndroidGradlePluginVersion',
-            'NonConstantResourceId', 'ClickableViewAccessibility'
+            'NonConstantResourceId', 'ClickableViewAccessibility', 'IconDensities'
 	// abortOnError false
     }
 }
 
 dependencies {
     implementation 'org.osmdroid:osmdroid-android:6.1.13'
-    implementation 'org.jsoup:jsoup:1.15.4'
+    implementation 'org.jsoup:jsoup:1.16.1'
 }
