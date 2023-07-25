@@ -26,7 +26,9 @@ package org.billthefarmer.buses;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.appwidget.AppWidgetManager;
 import android.app.Dialog;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -422,6 +424,18 @@ public class Buses extends Activity
         Configuration.getInstance().save(this, prefs);
         map.onPause();  // needed for compass, my location overlays,
                         // v6.0.0 and up
+
+        // Get manager
+        AppWidgetManager appWidgetManager =
+            AppWidgetManager.getInstance(this);
+        ComponentName provider = new
+            ComponentName(this, BusesWidgetProvider.class);
+
+        int appWidgetIds[] = appWidgetManager.getAppWidgetIds(provider);
+        Intent broadcast = new
+            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+        broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
+        sendBroadcast(broadcast);
 
         if (locationManager != null)
             locationManager.removeUpdates(listener);
