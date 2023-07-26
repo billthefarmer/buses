@@ -120,7 +120,7 @@ public class Buses extends Activity
     public static final String QUERY_FORMAT = "point(%f,%f)";
     public static final String STOP_FORMAT = "%s, %s";
     public static final String URL_FORMAT = "https://nextbuses.mobi%s";
-    public static final String BUS_FORMAT = "%3s: %s";
+    public static final String BUS_FORMAT = "%s: %s";
 
     public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
     public static final String SEARCH_PATTERN = ".*searchMap=true.*";
