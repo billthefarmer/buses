@@ -49,6 +49,14 @@ and by using the zoom in and out buttons. The floating blue **Locate**
 button will return the map to your current location. The button icon
 centre is filled in once the app has a GPS location.
 
+## Widget
+The app widget will show the bus times from the last stop viewed. Tap
+the refresh button to update. Due to restrictions in later versions of
+android the refresh button will no longer work after a short
+period. Tap the widget anywhere to show the app. The widget will
+update when the app is dismissed and the refresh button will work
+again.
+
 ## Permissions
 The app will ask for location and file access permissions. The
 location permission is to find out where you are. The file access
