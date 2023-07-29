@@ -27,7 +27,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -60,7 +59,23 @@ public class BusesWidgetUpdate extends Service
     public static final String EXTRA_UPDATE_DONE =
         "org.billthefarmer.buses.EXTRA_UPDATE_DONE";
 
-    public static final int DELAY = 5000;
+    public static final int RESET_DELAY = 5 * 1000;
+    public static final int RETRY_DELAY = 30 * 1000;
+    public static final int STOP_DELAY = 5 * 60 * 1000;
+
+    private Handler handler;
+    private boolean stopUpdate;
+
+    // onCreate
+    @Override
+    public void onCreate()
+    {
+        // Get handler
+        handler = new Handler(Looper.getMainLooper());
+
+        if (BuildConfig.DEBUG)
+            Log.d(TAG, "onCreate " + handler);
+    }
 
     // onStartCommand
     @Override
@@ -70,6 +85,27 @@ public class BusesWidgetUpdate extends Service
         if (BuildConfig.DEBUG)
             Log.d(TAG, "onStartCommand " + intent);
 
+        startBusesTask();
+
+        handler.postDelayed(() ->
+        {
+            stopUpdate = true;
+            stopSelf();
+        }, STOP_DELAY);
+
+        return START_NOT_STICKY;
+    }
+
+    // onBind
+    @Override
+    public IBinder onBind(Intent intent)
+    {
+        return null;
+    }
+
+    // startBusesTask
+    private void startBusesTask()
+    {
         // Get preferences
         SharedPreferences preferences =
             PreferenceManager.getDefaultSharedPreferences(this);
@@ -92,23 +128,12 @@ public class BusesWidgetUpdate extends Service
         int appWidgetIds[] = appWidgetManager.getAppWidgetIds(provider);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetIds, views);
 
-        // Get handler
-        Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(() ->
         {
             views.setViewVisibility(R.id.refresh, View.VISIBLE);
             views.setViewVisibility(R.id.progress, View.INVISIBLE);
             appWidgetManager.partiallyUpdateAppWidget(appWidgetIds, views);
-        }, DELAY);
-
-        return START_NOT_STICKY;
-    }
-
-    // onBind
-    @Override
-    public IBinder onBind(Intent intent)
-    {
-        return null;
+        }, RESET_DELAY);
     }
 
     // BusesTask
@@ -156,10 +181,13 @@ public class BusesWidgetUpdate extends Service
                 return;
 
             if (doc == null)
+            {
+                buses.stopSelf();
                 return;
+            }
 
             if (BuildConfig.DEBUG)
-                Log.d(TAG, "onPostExecute " + doc);
+                Log.d(TAG, "onPostExecute " + doc.head());
 
             String title = doc.select("h2").first().text();
 
@@ -175,11 +203,9 @@ public class BusesWidgetUpdate extends Service
                 list.add(bus);
             }
 
-            // Get context
-            Context context = buses.getApplicationContext();
             // Get preferences
             SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
+                PreferenceManager.getDefaultSharedPreferences(buses);
             // Get editor
             SharedPreferences.Editor editor = preferences.edit();
             editor.putString(Buses.PREF_TITLE, title);
@@ -204,7 +230,9 @@ public class BusesWidgetUpdate extends Service
             if (BuildConfig.DEBUG)
                 Log.d(TAG, "Broadcast " + broadcast);
 
-            buses.stopSelf();
+            if (!buses.stopUpdate)
+                buses.handler.postDelayed(() ->
+                    buses.startBusesTask(), RETRY_DELAY);
         }
     }
 }
