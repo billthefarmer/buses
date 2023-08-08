@@ -143,6 +143,7 @@ public class BusesWidgetProvider extends AppWidgetProvider
         // Start update service, won't work on android 10+
         try
         {
+            Intent update = new Intent(context, BusesWidgetUpdate.class);
             context.startService(update);
 
             if (BuildConfig.DEBUG)
