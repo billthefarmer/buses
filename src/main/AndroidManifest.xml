@@ -37,6 +37,10 @@
         android:name="Help"
         android:windowSoftInputMode="stateHidden" />
 
+    <activity
+        android:name="BusesWidgetRefresh"
+        android:theme="@android:style/Theme.NoDisplay" />
+
     <receiver
         android:name="BusesWidgetProvider"
         android:exported="true">

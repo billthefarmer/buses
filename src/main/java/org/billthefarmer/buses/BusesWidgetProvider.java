@@ -114,19 +114,19 @@ public class BusesWidgetProvider extends AppWidgetProvider
                                       PendingIntent.FLAG_UPDATE_CURRENT |
                                       PendingIntent.FLAG_IMMUTABLE);
         // Create an Intent to update widget
-        Intent update = new Intent(context, BusesWidgetUpdate.class);
+        Intent refresh = new Intent(context, BusesWidgetRefresh.class);
         //noinspection InlinedApi
-        PendingIntent updateIntent =
-            PendingIntent.getService(context, 0, update,
-                                     PendingIntent.FLAG_UPDATE_CURRENT |
-                                     PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent refreshIntent =
+            PendingIntent.getActivity(context, 0, refresh,
+                                      PendingIntent.FLAG_UPDATE_CURRENT |
+                                      PendingIntent.FLAG_IMMUTABLE);
 
         // Get the layout for the widget and attach an on-click
         // listener to the view.
         RemoteViews views = new
             RemoteViews(context.getPackageName(), R.layout.widget);
         views.setOnClickPendingIntent(R.id.widget, pendingIntent);
-        views.setOnClickPendingIntent(R.id.refresh, updateIntent);
+        views.setOnClickPendingIntent(R.id.refresh, refreshIntent);
         views.setViewVisibility(R.id.refresh, View.VISIBLE);
         views.setViewVisibility(R.id.progress, View.INVISIBLE);
         views.setTextViewText(R.id.title, title);
