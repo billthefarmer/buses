@@ -35,6 +35,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
 
+import java.text.DateFormat;
+import java.util.Date;
+
 import org.json.JSONArray;
 
 // BusesWidgetProvider
@@ -88,6 +91,11 @@ public class BusesWidgetProvider extends AppWidgetProvider
             Log.d(TAG, "List " + listJSON);
 
         StringBuilder buffer = new StringBuilder();
+        DateFormat format = DateFormat.getTimeInstance();
+        buffer.append(context.getString(R.string.updated))
+            .append(format.format(new Date()))
+            .append(System.getProperty("line.separator"));
+
         // Check list
         if (listJSON != null)
         {

@@ -7,6 +7,7 @@
   <string name="help">Help</string>
   <string name="about">About</string>
   <string name="locate">Locate</string>
+  <string name="updated">"Updated: "</string>
   <string name="version" formatted="false"><a
   href="https://github.com/billthefarmer/print/releases/latest">%s</a>\n\nBuilt
   %s\n\nCopyright \u00A9 2021 <a
