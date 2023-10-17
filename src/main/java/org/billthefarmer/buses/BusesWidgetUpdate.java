@@ -43,6 +43,8 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.json.JSONArray;
 
@@ -63,6 +65,7 @@ public class BusesWidgetUpdate extends Service
     public static final int RETRY_DELAY = 30 * 1000;
     public static final int STOP_DELAY = 5 * 60 * 1000;
 
+    private Timer timer;
     private Handler handler;
     private boolean stopUpdate;
 
@@ -70,6 +73,9 @@ public class BusesWidgetUpdate extends Service
     @Override
     public void onCreate()
     {
+        // Get timer
+        timer = new Timer();
+
         // Get handler
         handler = new Handler(Looper.getMainLooper());
 
@@ -87,11 +93,35 @@ public class BusesWidgetUpdate extends Service
 
         startBusesTask();
 
-        handler.postDelayed(() ->
+        // Schedule update
+        timer.schedule(new TimerTask()
         {
-            stopUpdate = true;
-            stopSelf();
+            @Override
+            public void run()
+            {
+                handler.post(() -> startBusesTask());
+            }
+        }, RETRY_DELAY, RETRY_DELAY);
+
+        // Schedule cancel
+        timer.schedule(new TimerTask()
+        {
+            @Override
+            public void run()
+            {
+                handler.post(() ->
+                {
+                    timer.cancel();
+                    stopSelf();
+                });
+            };
         }, STOP_DELAY);
+
+        // handler.postDelayed(() ->
+        // {
+        //     stopUpdate = true;
+        //     stopSelf();
+        // }, STOP_DELAY);
 
         return START_NOT_STICKY;
     }
@@ -230,9 +260,9 @@ public class BusesWidgetUpdate extends Service
             if (BuildConfig.DEBUG)
                 Log.d(TAG, "Broadcast " + broadcast);
 
-            if (!buses.stopUpdate)
-                buses.handler.postDelayed(() ->
-                    buses.startBusesTask(), RETRY_DELAY);
+            // if (!buses.stopUpdate)
+            //     buses.handler.postDelayed(() ->
+            //         buses.startBusesTask(), RETRY_DELAY);
         }
     }
 }

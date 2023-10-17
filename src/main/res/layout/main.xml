@@ -18,7 +18,7 @@
       android:elevation="6dp"
       android:contentDescription="@string/locate"
       android:background="@drawable/ic_button_background"
-      android:src="@drawable/ic_action_location_searching"
+      android:src="@drawable/ic_location_searching_white_24dp"
       tools:ignore="UnusedAttribute" />
 
   <ProgressBar

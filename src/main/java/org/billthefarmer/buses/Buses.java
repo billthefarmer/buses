@@ -304,7 +304,7 @@ public class Buses extends Activity
         });
 
         if (located)
-            button.setImageResource(R.drawable.ic_action_location_found);
+            button.setImageResource(R.drawable.ic_my_location_white_24dp);
 
         progressBar = findViewById(R.id.progress);
 
@@ -321,7 +321,7 @@ public class Buses extends Activity
                 {
                     map.getController().animateTo(point, 19.0, null);
                     button.setImageResource(R.drawable
-                                            .ic_action_location_found);
+                                            .ic_my_location_white_24dp);
                     located = true;
                     zoomed = true;
                 }
