@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId "org.billthefarmer.buses"
-        minSdkVersion 14
+        minSdkVersion 21
         targetSdkVersion 28
         versionName "1.05"
         versionCode 105
