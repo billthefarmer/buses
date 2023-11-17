@@ -94,6 +94,7 @@ import org.jsoup.select.Elements;
 import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
 
+@SuppressWarnings("deprecation")
 public class Buses extends Activity
 {
     public static final String TAG = "Buses";
