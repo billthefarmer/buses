@@ -849,8 +849,7 @@ public class Buses extends Activity
                                           link.attr("href"));
                         if (url.matches(SEARCH_PATTERN))
                             continue;
-                        if (BuildConfig.DEBUG)
-                            Log.d(TAG, "StopsTask " + url);
+
                         urls.add(url);
                         String s = link.text();
                         list.add(s);
