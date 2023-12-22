@@ -25,6 +25,7 @@ package uk.me.jstott.jcoord;
  * @since 1.0
  * @deprecated Use classes in the uk.me.jstott.jcoord.ellipsoid package instead.
  */
+@Deprecated
 public class RefEll {
 
   /**

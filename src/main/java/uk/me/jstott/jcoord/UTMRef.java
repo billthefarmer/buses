@@ -73,6 +73,7 @@ public class UTMRef extends CoordinateSystem {
    * @deprecated Use <code>{@link #UTMRef(int, char, double, double)}</code>
    *             instead.
    */
+    @Deprecated
   public UTMRef(double easting, double northing, char latZone, int lngZone)
       throws NotDefinedOnUTMGridException {
     this(lngZone, latZone, easting, northing);

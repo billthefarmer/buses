@@ -730,6 +730,7 @@ public class LatLng {
    * @since 1.0
    * @deprecated Use {@link #getLatitude() getLatitude()} instead.
    */
+    @Deprecated
   public double getLat() {
     return latitude;
   }
@@ -807,6 +808,7 @@ public class LatLng {
    * @since 1.0
    * @deprecated Use {@link #getLongitude() getLongitude()} instead.
    */
+    @Deprecated
   public double getLng() {
     return longitude;
   }

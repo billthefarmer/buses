@@ -735,11 +735,11 @@ public class Buses extends Activity
 
     // StopsTask
     private static class StopsTask
-            extends AsyncTask<String, Void, Document>
+            extends AsyncTask<String, String, Document>
     {
         private WeakReference<Buses> busesWeakReference;
 
-        // FindTask
+        // StopsTask
         public StopsTask(Buses buses)
         {
             busesWeakReference = new WeakReference<>(buses);
@@ -753,7 +753,9 @@ public class Buses extends Activity
             if (buses == null)
                 return null;
 
-            String url = params[0];
+            String url = params[0].replaceAll("\\+", "%2B");
+            publishProgress(url);
+
             // Do web search
             try
             {
@@ -774,6 +776,18 @@ public class Buses extends Activity
             }
 
             return null;
+        }
+
+        // On progress update
+        @Override
+        protected void onProgressUpdate(String... urls)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "StopsTask url " + urls[0]);
         }
 
         // onPostExecute
@@ -835,6 +849,8 @@ public class Buses extends Activity
                                           link.attr("href"));
                         if (url.matches(SEARCH_PATTERN))
                             continue;
+                        if (BuildConfig.DEBUG)
+                            Log.d(TAG, "StopsTask " + url);
                         urls.add(url);
                         String s = link.text();
                         list.add(s);
@@ -961,6 +977,9 @@ public class Buses extends Activity
             if (buses == null)
                 return;
 
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "BusesTask url " + urls[0]);
+
             // Get context
             Context context = buses.getApplicationContext();
             // Get preferences
@@ -970,9 +989,6 @@ public class Buses extends Activity
             SharedPreferences.Editor editor = preferences.edit();
             editor.putString(PREF_URL, urls[0]);
             editor.apply();
-
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "Url " + urls[0]);
         }
 
         // onPostExecute
