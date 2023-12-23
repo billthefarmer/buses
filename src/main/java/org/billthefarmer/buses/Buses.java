@@ -753,7 +753,7 @@ public class Buses extends Activity
             if (buses == null)
                 return null;
 
-            String url = params[0].replaceAll("\\+", "%2B");
+            String url = params[0];
             publishProgress(url);
 
             // Do web search
