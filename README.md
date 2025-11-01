@@ -3,6 +3,10 @@
 
 Geographical GB bus times lookup app.
 
+## No longer working
+This app no longer works from tapping on the map due to an API change. This is
+not fixable.
+
 ### Non-free network services
 Unfortunately, this app had been tagged by F-Droid as promoting
 non-free network services. Actually, this app doesn't promote anything
