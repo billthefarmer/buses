@@ -26,8 +26,8 @@ package org.billthefarmer.buses;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.appwidget.AppWidgetManager;
 import android.app.Dialog;
+import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -36,9 +36,10 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -54,8 +55,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ImageButton;
-import android.widget.SearchView;
 import android.widget.ProgressBar;
+import android.widget.SearchView;
 import android.widget.TextView;
 
 import org.osmdroid.api.IGeoPoint;
@@ -108,7 +109,6 @@ public class Buses extends Activity
     public static final String ZOOMLEVEL = "zoomlevel";
     public static final String SCROLLED = "scrolled";
     public static final String LOCATED = "located";
-    public static final String ZOOMED = "zoomed";
 
     public static final String MULTI_FORMAT =
         "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
@@ -118,12 +118,10 @@ public class Buses extends Activity
         "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
         "%s?currentPage=0";
 
-    public static final String QUERY_FORMAT = "point(%f,%f)";
     public static final String STOP_FORMAT = "%s, %s";
     public static final String URL_FORMAT = "https://nextbuses.mobi%s";
     public static final String BUS_FORMAT = "%s: %s";
 
-    public static final String POINT_PATTERN = ".+POINT\\(.+\\).+";
     public static final String SEARCH_PATTERN = ".*searchMap=true.*";
     public static final String STOP_PATTERN =
         "((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|" +
@@ -136,17 +134,16 @@ public class Buses extends Activity
     private static final int SHORT_DELAY = 5000;
     private static final int LONG_DELAY = 10000;
 
-    private MapView map = null;  
-    private MenuItem searchItem;
-    private SearchView searchView;
+    private DateFormat dateFormat;
     private ImageButton button;
-    private ProgressBar progressBar;
     private Location last = null;
     private Location location = null;
-    private LocationManager locationManager;
-    private DateFormat dateFormat;
     private LocationListener listener;
+    private MapView map = null;  
+    private MenuItem searchItem;
     private MyLocationNewOverlay myLocation;
+    private ProgressBar progressBar;
+    private SearchView searchView;
     private TextOverlay leftOverlay;
     private TextOverlay rightOverlay;
 
@@ -154,7 +151,6 @@ public class Buses extends Activity
 
     private boolean located;
     private boolean scrolled;
-    private boolean zoomed;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -197,6 +193,21 @@ public class Buses extends Activity
         overlayList.add(scale);
 
         myLocation = new MyLocationNewOverlay(map);
+        myLocation.enableFollowLocation();
+        myLocation.runOnFirstFix(() ->
+        {
+            // Run on UI thread
+            map.post(() ->
+            {
+                // Show location
+                button.setImageResource(R.drawable.ic_my_location_white_24dp);
+                // Zoom in
+                map.getController().setZoom(19.0);
+                // Set flags;
+                scrolled = false;
+                located = true;
+            });
+        });
         overlayList.add(myLocation);
 
         leftOverlay = new TextOverlay(this);
@@ -227,7 +238,6 @@ public class Buses extends Activity
             // Get flags
             located = savedInstanceState.getBoolean(LOCATED);
             scrolled = savedInstanceState.getBoolean(SCROLLED);
-            zoomed = savedInstanceState.getBoolean(ZOOMED);
 
             // Get location
             location = savedInstanceState.getParcelable(LOCATION);
@@ -251,14 +261,22 @@ public class Buses extends Activity
             {
                 if (located)
                 {
-                    if (zoomed)
-                        scrolled = true;
+                    // Stop following if scrolled
+                    if (scrolled)
+                    {
+                        myLocation.disableFollowLocation();
 
-                    IGeoPoint point = map.getMapCenter();
-                    Location location = new Location("MapView");
-                    location.setLatitude(point.getLatitude());
-                    location.setLongitude(point.getLongitude());
-                    showLocation(location);
+                        // Show scrolled location (No height or accuracy)
+                        IGeoPoint point = map.getMapCenter();
+                        Location location = new Location("MapView");
+                        location.setLatitude(point.getLatitude());
+                        location.setLongitude(point.getLongitude());
+                        showLocation(location);
+                    }
+
+                    else
+                        // Show location from fix
+                        showLocation(myLocation.getLastFix());
                 }
 
                 return true;
@@ -276,80 +294,29 @@ public class Buses extends Activity
         button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
         {
-            if (locationManager != null)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
             {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                    checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                    != PackageManager.PERMISSION_GRANTED)
-                {
-                    requestPermissions(new String[]
-                    {Manifest.permission.ACCESS_FINE_LOCATION,
-                     Manifest.permission.READ_EXTERNAL_STORAGE,
-                     Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                       REQUEST_PERMS);
-                    return;
-                }
-
-                // Get location
-                Location location =
-                    locationManager.getLastKnownLocation(LocationManager
-                                                         .GPS_PROVIDER);
-                if (location != null)
-                {
-                    // Get point
-                    GeoPoint p = new GeoPoint(location);
-                    // Centre map
-                    map.getController().animateTo(p);
-                }
+                requestPermissions(new String[]
+                {Manifest.permission.ACCESS_FINE_LOCATION,
+                 Manifest.permission.READ_EXTERNAL_STORAGE,
+                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                   REQUEST_PERMS);
+                return;
             }
+
+            // Resume following
+            myLocation.enableFollowLocation();
+            // Centre map
+            map.getController().animateTo(myLocation.getMyLocation());
+            // Set zoom
+            map.getController().setZoom(19.0);
+            showLocation(myLocation.getLastFix());
+            scrolled = false;
         });
 
-        if (located)
-            button.setImageResource(R.drawable.ic_my_location_white_24dp);
-
         progressBar = findViewById(R.id.progress);
-
-        listener = new LocationListener()
-        {
-            @Override
-            public void onLocationChanged(Location location)
-            {
-                // Get point
-                GeoPoint point = new GeoPoint(location);
-
-                // Centre and zoom map once
-                if (!located)
-                {
-                    map.getController().animateTo(point, 19.0, null);
-                    button.setImageResource(R.drawable
-                                            .ic_my_location_white_24dp);
-                    located = true;
-                    zoomed = true;
-                }
-
-                if (!scrolled && location.getSpeed() > 0.5)
-                    map.getController().animateTo(point);
-
-                if (scrolled)
-                    map.postDelayed(() ->
-                    {
-                        scrolled = false;
-                    }, LONG_DELAY);
-
-                else
-                    showLocation(location);
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status,
-                                        Bundle extras) {}
-            @Override
-            public void onProviderEnabled(String provider) {}
-
-            @Override
-            public void onProviderDisabled(String provider) {}
-
-        };
 
         // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -365,10 +332,6 @@ public class Buses extends Activity
                 return;
             }
         }
-
-        // Acquire a reference to the system Location Manager
-        locationManager = (LocationManager)
-                          getSystemService(LOCATION_SERVICE);
     }
 
     @Override
@@ -377,39 +340,22 @@ public class Buses extends Activity
         super.onResume();
         // this will refresh the osmdroid configuration on resuming.
         // if you make changes to the configuration, use
-        SharedPreferences prefs =
-            PreferenceManager.getDefaultSharedPreferences(this);
         Configuration.getInstance()
-            .load(this, PreferenceManager.getDefaultSharedPreferences(this));
+            .load(this, PreferenceManager
+                  .getDefaultSharedPreferences(this));
         map.onResume(); // needed for compass, my location overlays,
                         // v6.0.0 and up
 
-        if (locationManager != null)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED)
         {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-            {
-                requestPermissions(new String[]
-                {Manifest.permission.ACCESS_FINE_LOCATION,
-                 Manifest.permission.READ_EXTERNAL_STORAGE,
-                 Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                   REQUEST_PERMS);
-                return;
-            }
-
-            Location location =
-                locationManager.getLastKnownLocation(LocationManager
-                                                     .GPS_PROVIDER);
-            if (location != null)
-                showLocation(location);
-
-            locationManager
-                .requestSingleUpdate(LocationManager.GPS_PROVIDER,
-                                     listener, null);
-            locationManager
-                .requestLocationUpdates(LocationManager.GPS_PROVIDER,
-                                        SHORT_DELAY, 0, listener);
+            requestPermissions(new String[]
+            {Manifest.permission.ACCESS_FINE_LOCATION,
+             Manifest.permission.READ_EXTERNAL_STORAGE,
+             Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                               REQUEST_PERMS);
+            return;
         }
     }
 
@@ -420,13 +366,13 @@ public class Buses extends Activity
         super.onPause();
         // this will refresh the osmdroid configuration on resuming.
         // if you make changes to the configuration, use
-        SharedPreferences prefs =
-            PreferenceManager.getDefaultSharedPreferences(this);
-        Configuration.getInstance().save(this, prefs);
+        Configuration.getInstance()
+            .save(this, PreferenceManager
+                  .getDefaultSharedPreferences(this));
         map.onPause();  // needed for compass, my location overlays,
                         // v6.0.0 and up
 
-        // Get manager
+        // Get widget manager
         AppWidgetManager appWidgetManager =
             AppWidgetManager.getInstance(this);
         ComponentName provider = new
@@ -437,9 +383,6 @@ public class Buses extends Activity
             Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
         broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
         sendBroadcast(broadcast);
-
-        if (locationManager != null)
-            locationManager.removeUpdates(listener);
     }
 
     // onSaveInstanceState
@@ -450,7 +393,6 @@ public class Buses extends Activity
 
         outState.putBoolean(LOCATED, located);
         outState.putBoolean(SCROLLED, scrolled);
-        outState.putBoolean(ZOOMED, zoomed);
 
         outState.putParcelable(LOCATION, location);
         IGeoPoint geopoint = map.getMapCenter();
@@ -533,12 +475,7 @@ public class Buses extends Activity
             for (int i = 0; i < grantResults.length; i++)
                 if (permissions[i].equals(Manifest.permission
                                           .ACCESS_FINE_LOCATION) &&
-                    grantResults[i] == PackageManager.PERMISSION_GRANTED)
-                    // Acquire a reference to the system Location
-                    // Manager
-                    if (locationManager == null)
-                        locationManager =
-                            (LocationManager)getSystemService(LOCATION_SERVICE);
+                    grantResults[i] == PackageManager.PERMISSION_GRANTED);
         }
     }
 
@@ -583,6 +520,11 @@ public class Buses extends Activity
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
+
+            // Geocoder coder = new Geocoder(buses);
+            // Get postcode
+            // List<Address> list = coder
+            //     .getFromLocation(point.latitude, point.longitude, 1);
 	}
 
         catch (Exception e) {}
@@ -682,7 +624,7 @@ public class Buses extends Activity
                 String url = String.format(Locale.getDefault(),
                                            MULTI_FORMAT, query);
 
-                StopsTask task = new StopsTask(buses);
+                StopsTask task = new StopsTask(buses, false);
                 task.execute(url);
             }
 
@@ -708,6 +650,18 @@ public class Buses extends Activity
             this.buses = buses;
         }
 
+        // onScroll
+        @Override
+        public boolean onScroll (MotionEvent e1,
+                                 MotionEvent e2,
+                                 float distanceX,
+                                 float distanceY)
+        {
+            // Set flag
+            scrolled = true;
+            return false;
+        }
+
         // onSingleTapConfirmed
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e)
@@ -716,20 +670,89 @@ public class Buses extends Activity
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
 
-            // Construct query
-            String query = String.format(Locale.getDefault(),
-                                         QUERY_FORMAT,
-                                         point.getLatitude(),
-                                         point.getLongitude());
-
-            String url = String.format(Locale.getDefault(),
-                                       MULTI_FORMAT, query);
-
-            StopsTask task = new StopsTask(buses);
-            task.execute(url);
+            // Get postcode
+            PostcodeTask task = new PostcodeTask(buses);
+            task.execute(point);
 
             progressBar.setVisibility(View.VISIBLE);
             return true;
+        }
+    }
+
+    // PostcodeTask
+    private static class PostcodeTask
+        extends AsyncTask<IGeoPoint, IGeoPoint, String>
+    {
+        private WeakReference<Buses> busesWeakReference;
+
+        // PostcodeTask
+        public PostcodeTask(Buses buses)
+        {
+            busesWeakReference = new WeakReference<>(buses);
+        }
+
+        // doInBackground
+        @Override
+        protected String doInBackground(IGeoPoint... params)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return null;
+
+            IGeoPoint point = params[0];
+            publishProgress(point);
+
+            Geocoder coder = new Geocoder(buses);
+            // Get postcode
+            try
+            {
+                List<Address> list = coder.getFromLocation(point.getLatitude(),
+                                                       point.getLongitude(), 1);
+                return list.get(0).getPostalCode();
+            }
+
+            catch(Exception e)
+            {
+                buses.runOnUiThread(() ->
+                {
+                    buses.alertDialog(R.string.appName,
+                                      e.getMessage(),
+                                      android.R.string.ok);
+                    buses.progressBar.setVisibility(View.GONE);
+                });
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        // On progress update
+        @Override
+        protected void onProgressUpdate(IGeoPoint... points)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "PostcodeTask point " + points[0].toString());
+        }
+
+        // onPostExecute
+        @Override
+        protected void onPostExecute(String code)
+        {
+            final Buses buses = busesWeakReference.get();
+            if (buses == null)
+                return;
+
+            if (code == null)
+                return;
+
+            String url = String.format(Locale.getDefault(),
+                                       MULTI_FORMAT, code);
+            StopsTask task = new StopsTask(buses, true);
+            task.execute(url);
         }
     }
 
@@ -738,11 +761,13 @@ public class Buses extends Activity
             extends AsyncTask<String, String, Document>
     {
         private WeakReference<Buses> busesWeakReference;
+        private boolean getBuses;
 
         // StopsTask
-        public StopsTask(Buses buses)
+        public StopsTask(Buses buses, boolean getBuses)
         {
             busesWeakReference = new WeakReference<>(buses);
+            this.getBuses = getBuses;
         }
 
         // doInBackground
@@ -803,7 +828,7 @@ public class Buses extends Activity
 
             String title = doc.select("h2").first().text();
             Elements tds = doc.select("td.Number");
-            if (tds.first() != null && title.matches(POINT_PATTERN))
+            if (tds.first() != null && getBuses)
             {
                 try
                 {
@@ -903,7 +928,7 @@ public class Buses extends Activity
 
                 if (tds.isEmpty())
                 {
-                    StopsTask task = new StopsTask(buses);
+                    StopsTask task = new StopsTask(buses, false);
                     task.execute(urls.get(which));
                 }
 
