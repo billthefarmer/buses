@@ -107,7 +107,6 @@ public class Buses extends Activity
     public static final String LOCATION = "location";
     public static final String MAPCENTRE = "mapcentre";
     public static final String ZOOMLEVEL = "zoomlevel";
-    public static final String SCROLLED = "scrolled";
     public static final String LOCATED = "located";
 
     public static final String MULTI_FORMAT =
@@ -150,7 +149,6 @@ public class Buses extends Activity
     private GestureDetector gestureDetector;
 
     private boolean located;
-    private boolean scrolled;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -194,6 +192,7 @@ public class Buses extends Activity
 
         myLocation = new MyLocationNewOverlay(map);
         myLocation.enableFollowLocation();
+        myLocation.setEnableAutoStop(true);
         myLocation.runOnFirstFix(() ->
         {
             // Run on UI thread
@@ -203,8 +202,7 @@ public class Buses extends Activity
                 button.setImageResource(R.drawable.ic_my_location_white_24dp);
                 // Zoom in
                 map.getController().setZoom(19.0);
-                // Set flags;
-                scrolled = false;
+                // Set flag;
                 located = true;
             });
         });
@@ -235,9 +233,8 @@ public class Buses extends Activity
 
         else
         {
-            // Get flags
+            // Get flag
             located = savedInstanceState.getBoolean(LOCATED);
-            scrolled = savedInstanceState.getBoolean(SCROLLED);
 
             // Get location
             location = savedInstanceState.getParcelable(LOCATION);
@@ -261,11 +258,9 @@ public class Buses extends Activity
             {
                 if (located)
                 {
-                    // Stop following if scrolled
-                    if (scrolled)
+                    // Show location from map
+                    if (!myLocation.isFollowLocationEnabled())
                     {
-                        myLocation.disableFollowLocation();
-
                         // Show scrolled location (No height or accuracy)
                         IGeoPoint point = map.getMapCenter();
                         Location location = new Location("MapView");
@@ -313,7 +308,6 @@ public class Buses extends Activity
             // Set zoom
             map.getController().setZoom(19.0);
             showLocation(myLocation.getLastFix());
-            scrolled = false;
         });
 
         progressBar = findViewById(R.id.progress);
@@ -392,7 +386,6 @@ public class Buses extends Activity
         super.onSaveInstanceState(outState);
 
         outState.putBoolean(LOCATED, located);
-        outState.putBoolean(SCROLLED, scrolled);
 
         outState.putParcelable(LOCATION, location);
         IGeoPoint geopoint = map.getMapCenter();
@@ -648,18 +641,6 @@ public class Buses extends Activity
         GestureListener(Buses buses)
         {
             this.buses = buses;
-        }
-
-        // onScroll
-        @Override
-        public boolean onScroll (MotionEvent e1,
-                                 MotionEvent e2,
-                                 float distanceX,
-                                 float distanceY)
-        {
-            // Set flag
-            scrolled = true;
-            return false;
         }
 
         // onSingleTapConfirmed
