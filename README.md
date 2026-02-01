@@ -3,11 +3,6 @@
 
 Geographical GB bus times lookup app.
 
-## No longer working
-This app no longer works from tapping on the map due to an API change. This is
-not fixable. However entering the name of the stop and town or the magick
-code on the stop sign still works.
-
 ### Non-free network services
 Unfortunately, this app had been tagged by F-Droid as promoting
 non-free network services. Actually, this app doesn't promote anything
@@ -45,8 +40,7 @@ and date, OS six figure reference, and OS twelve figure reference are
 shown in the left upper corner of the map. The current longitude,
 latitude, altitude and accuracy are shown in the right upper corner of
 the map. If the map is panned, these figures will change to the
-current map centre. After a delay they will revert to the current GPS
-location.
+current map centre.
 
 ## Navigate
 You can pan and zoom the map using pinch, expand, and swipe gestures,
