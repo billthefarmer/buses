@@ -71,6 +71,12 @@ public class TextOverlay extends Overlay
         this.textList = textList;
     }
 
+    // Get text
+    public List<String> getText()
+    {
+        return this.textList;
+    }
+
     // Set text size
     public void setTextSize(int fontSize)
     {
@@ -113,9 +119,6 @@ public class TextOverlay extends Overlay
 
 	if (shadow)
 	    return;
-
-	if (map.isAnimating())
-            return;
 
 	if (alignRight)
 	{
