@@ -130,9 +130,6 @@ public class Buses extends Activity
 
     private final static int REQUEST_PERMS = 1;
 
-    private static final int SHORT_DELAY = 5000;
-    private static final int LONG_DELAY = 10000;
-
     private DateFormat dateFormat;
     private ImageButton button;
     private Location last = null;
@@ -225,7 +222,7 @@ public class Buses extends Activity
             map.getController().setZoom(7.0);
 
             // Get point
-            GeoPoint point = new GeoPoint(52.561928, -1.464854);
+            IGeoPoint point = new GeoPoint(52.561928, -1.464854);
 
             // Centre map
             map.getController().setCenter(point);
@@ -245,7 +242,7 @@ public class Buses extends Activity
                                         .getDouble(ZOOMLEVEL));
             // Get centre
             Location centre = savedInstanceState.getParcelable(MAPCENTRE);
-            GeoPoint point = new GeoPoint(centre);
+            IGeoPoint point = new GeoPoint(centre);
 
             // Centre map
             map.getController().setCenter(point);
@@ -513,11 +510,6 @@ public class Buses extends Activity
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
-
-            // Geocoder coder = new Geocoder(buses);
-            // Get postcode
-            // List<Address> list = coder
-            //     .getFromLocation(point.latitude, point.longitude, 1);
 	}
 
         catch (Exception e) {}
@@ -650,19 +642,17 @@ public class Buses extends Activity
             // Get point
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
-
-            // Get postcode
             PostcodeTask task = new PostcodeTask(buses);
             task.execute(point);
-
             progressBar.setVisibility(View.VISIBLE);
+
             return true;
         }
     }
 
     // PostcodeTask
     private static class PostcodeTask
-        extends AsyncTask<IGeoPoint, IGeoPoint, String>
+        extends AsyncTask<IGeoPoint, Void, String>
     {
         private WeakReference<Buses> busesWeakReference;
 
@@ -681,8 +671,6 @@ public class Buses extends Activity
                 return null;
 
             IGeoPoint point = params[0];
-            publishProgress(point);
-
             Geocoder coder = new Geocoder(buses);
             // Get postcode
             try
@@ -707,18 +695,6 @@ public class Buses extends Activity
             return null;
         }
 
-        // On progress update
-        @Override
-        protected void onProgressUpdate(IGeoPoint... points)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "PostcodeTask point " + points[0].toString());
-        }
-
         // onPostExecute
         @Override
         protected void onPostExecute(String code)
@@ -739,7 +715,7 @@ public class Buses extends Activity
 
     // StopsTask
     private static class StopsTask
-            extends AsyncTask<String, String, Document>
+            extends AsyncTask<String, Void, Document>
     {
         private WeakReference<Buses> busesWeakReference;
         private boolean getBuses;
@@ -760,7 +736,6 @@ public class Buses extends Activity
                 return null;
 
             String url = params[0];
-            publishProgress(url);
 
             // Do web search
             try
@@ -782,18 +757,6 @@ public class Buses extends Activity
             }
 
             return null;
-        }
-
-        // On progress update
-        @Override
-        protected void onProgressUpdate(String... urls)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "StopsTask url " + urls[0]);
         }
 
         // onPostExecute

@@ -4,8 +4,9 @@
     <title>Categories on Buses</title>
     <link>https://billthefarmer.github.io/buses/categories/</link>
     <description>Recent content in Categories on Buses</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo</generator>
     <language>en-gb</language>
-    <copyright>Copyright &amp;copy; 2006 Bill Farmer</copyright><atom:link href="https://billthefarmer.github.io/buses/categories/index.xml" rel="self" type="application/rss+xml" />
+    <copyright>Copyright &amp;copy; 2006 Bill Farmer</copyright>
+    <atom:link href="https://billthefarmer.github.io/buses/categories/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>
