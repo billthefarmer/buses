@@ -29,7 +29,6 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -45,6 +44,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import org.json.JSONArray;
 
@@ -68,6 +70,7 @@ public class BusesWidgetUpdate extends Service
     private Timer timer;
     private Handler handler;
     private boolean stopUpdate;
+    private ExecutorService executor;
 
     // onCreate
     @Override
@@ -78,6 +81,9 @@ public class BusesWidgetUpdate extends Service
 
         // Get handler
         handler = new Handler(Looper.getMainLooper());
+
+        // Executor
+        executor =  Executors.newSingleThreadExecutor();
 
         if (BuildConfig.DEBUG)
             Log.d(TAG, "onCreate " + handler);
@@ -117,12 +123,6 @@ public class BusesWidgetUpdate extends Service
             };
         }, STOP_DELAY);
 
-        // handler.postDelayed(() ->
-        // {
-        //     stopUpdate = true;
-        //     stopSelf();
-        // }, STOP_DELAY);
-
         return START_NOT_STICKY;
     }
 
@@ -141,8 +141,7 @@ public class BusesWidgetUpdate extends Service
             PreferenceManager.getDefaultSharedPreferences(this);
         String url = preferences.getString(Buses.PREF_URL, null);
 
-        BusesTask task = new BusesTask(this);
-        task.execute(url);
+        executor.execute(() -> busesFromUrl(url));
 
         // Get the layout for the widget
         RemoteViews views = new
@@ -166,53 +165,14 @@ public class BusesWidgetUpdate extends Service
         }, RESET_DELAY);
     }
 
-    // BusesTask
-    private static class BusesTask
-            extends AsyncTask<String, Void, Document>
+    private void busesFromUrl(String url)
     {
-        private WeakReference<BusesWidgetUpdate> busesWeakReference;
-
-        // BusesTask
-        public BusesTask(BusesWidgetUpdate buses)
+        try
         {
-            busesWeakReference = new WeakReference<>(buses);
-        }
-
-        // doInBackground
-        @Override
-        protected Document doInBackground(String... params)
-        {
-            final BusesWidgetUpdate buses = busesWeakReference.get();
-            if (buses == null)
-                return null;
-
-            String url = params[0];
-            // Do web search
-            try
-            {
-                Document doc = Jsoup.connect(url).get();
-                return doc;
-            }
-
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        // onPostExecute
-        @Override
-        protected void onPostExecute(Document doc)
-        {
-            final BusesWidgetUpdate buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
+            Document doc = Jsoup.connect(url).get();
             if (doc == null)
             {
-                buses.stopSelf();
+                stopSelf();
                 return;
             }
 
@@ -235,7 +195,7 @@ public class BusesWidgetUpdate extends Service
 
             // Get preferences
             SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(buses);
+                PreferenceManager.getDefaultSharedPreferences(this);
             // Get editor
             SharedPreferences.Editor editor = preferences.edit();
             editor.putString(Buses.PREF_TITLE, title);
@@ -245,9 +205,9 @@ public class BusesWidgetUpdate extends Service
 
             // Get manager
             AppWidgetManager appWidgetManager =
-                AppWidgetManager.getInstance(buses);
+                AppWidgetManager.getInstance(this);
             ComponentName provider = new
-                ComponentName(buses, BusesWidgetProvider.class);
+                ComponentName(this, BusesWidgetProvider.class);
 
             int appWidgetIds[] = appWidgetManager.getAppWidgetIds(provider);
             Intent broadcast = new
@@ -255,14 +215,15 @@ public class BusesWidgetUpdate extends Service
             broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,
                                appWidgetIds);
             broadcast.putExtra(EXTRA_UPDATE_DONE, true);
-            buses.sendBroadcast(broadcast);
+            sendBroadcast(broadcast);
 
             if (BuildConfig.DEBUG)
                 Log.d(TAG, "Broadcast " + broadcast);
+        }
 
-            // if (!buses.stopUpdate)
-            //     buses.handler.postDelayed(() ->
-            //         buses.startBusesTask(), RETRY_DELAY);
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
     }
 }
