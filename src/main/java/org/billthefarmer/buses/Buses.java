@@ -40,7 +40,6 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -81,6 +80,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -144,6 +146,7 @@ public class Buses extends Activity
     private TextOverlay rightOverlay;
 
     private GestureDetector gestureDetector;
+    private ExecutorService executor;
 
     private boolean located;
 
@@ -283,6 +286,9 @@ public class Buses extends Activity
             return false;
         });
 
+        // Executor
+        executor =  Executors.newSingleThreadExecutor();
+
         button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
         {
@@ -418,7 +424,7 @@ public class Buses extends Activity
         {
             searchView.setSubmitButtonEnabled(true);
             searchView.setImeOptions(EditorInfo.IME_ACTION_GO);
-            searchView.setOnQueryTextListener(new QueryTextListener(this));
+            searchView.setOnQueryTextListener(new QueryTextListener());
         }
 
         return true;
@@ -472,6 +478,9 @@ public class Buses extends Activity
     // Show location
     private void showLocation(Location location)
     {
+        if (location == null)
+            return;
+
 	float  acc = location.getAccuracy();
 	double lat = location.getLatitude();
 	double lng = location.getLongitude();
@@ -515,7 +524,261 @@ public class Buses extends Activity
         catch (Exception e) {}
 
         leftOverlay.setText(leftList);
-        map.invalidate();
+
+        executor.execute(() ->
+        {
+            Geocoder coder = new Geocoder(this);
+            // Get postcode
+            try
+            {
+                List<Address> list =
+                    coder.getFromLocation(lat, lng, 1);
+                String code = list.get(0).getPostalCode();
+                map.post(() ->
+                {
+                    leftList.add(code);
+                    map.invalidate();
+                });
+            }
+
+            catch (Exception e) {}
+        });
+    }
+
+    // stopsFromPostcode
+    private void stopsFromPostcode(String url)
+    {
+        // Do web search
+        try
+        {
+            Document doc = Jsoup.connect(url).get();
+            map.post(() ->
+            {
+                Elements tds = doc.select("td.Number");
+                if (tds.first() != null)
+                {
+                    try
+                    {
+                        Element td = tds.first().nextElementSibling();
+                        Element p = td.select("p").first();
+                        String url2 =
+                            String.format(Locale.getDefault(), URL_FORMAT,
+                                          p.select("a[href]").first()
+                                          .attr("href"));
+                        executor.execute(() -> busesFromStop(url2));
+                    }
+
+                    catch (Exception e)
+                    {
+                        if (BuildConfig.DEBUG)
+                            Log.d(TAG, "stopsFromPostcode " +
+                                  tds.first().outerHtml());
+                        e.printStackTrace();
+                    }
+
+                    progressBar.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+
+        catch (Exception e)
+        {
+            map.post(() ->
+            {
+                alertDialog(R.string.appName,
+                            e.getMessage(),
+                            android.R.string.ok);
+                progressBar.setVisibility(View.GONE);
+            });
+            e.printStackTrace();
+        }
+    }
+
+    // busesFromStop
+    private void busesFromStop(String url)
+    {
+        // Do web search
+        try
+        {
+            Document doc = Jsoup.connect(url).get();
+            map.post(() ->
+            {
+                // Build dialog
+                AlertDialog.Builder builder =
+                    new AlertDialog.Builder(this);
+                String title = doc.select("h2").first().text();
+                builder.setTitle(title);
+
+                List<String> list = new ArrayList<>();
+                Elements tds = doc.select("td.Number");
+                for (Element td: tds)
+                {
+                    String n = td.select("p.Stops > a[href]").text();
+                    td = td.nextElementSibling();
+                    String s = td.select("p.Stops").first().text();
+                    String bus = String.format(Locale.getDefault(),
+                                               BUS_FORMAT,
+                                               n, s);
+                    list.add(bus);
+                }
+
+                String[] buses = list.toArray(new String[0]);
+                builder.setItems(buses, null);
+
+                builder.setNegativeButton(android.R.string.ok, null);
+                builder.show();
+
+                progressBar.setVisibility(View.GONE);
+
+                // Get context
+                Context context = getApplicationContext();
+                // Get preferences
+                SharedPreferences preferences =
+                    PreferenceManager.getDefaultSharedPreferences(context);
+                // Get editor
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putString(PREF_TITLE, title);
+                JSONArray busArray = new JSONArray(list);
+                editor.putString(PREF_LIST, busArray.toString());
+                editor.apply();
+            });
+        }
+
+        catch (Exception e)
+        {
+            map.post(() ->
+            {
+                alertDialog(R.string.appName,
+                            e.getMessage(),
+                            android.R.string.ok);
+                progressBar.setVisibility(View.GONE);
+            });
+            e.printStackTrace();
+        }
+
+        // Get context
+        Context context = getApplicationContext();
+        // Get preferences
+        SharedPreferences preferences =
+            PreferenceManager.getDefaultSharedPreferences(context);
+        // Get editor
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString(PREF_URL, url);
+        editor.apply();
+    }
+
+    // stopsFromText
+    private void stopsFromText(String url)
+    {
+        // Do web search
+        try
+        {
+            Document doc = Jsoup.connect(url).get();
+            map.post(() ->
+            {
+                String title = doc.select("h2").first().text();
+                Elements tds = doc.select("td.Number");
+                // Build dialog
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(title);
+
+                List<String> list = new ArrayList<>();
+                List<String> urls = new ArrayList<>();
+
+                // Location
+                if (tds.isEmpty())
+                {
+                    Elements links = doc.select("p.Stops > a[href]");
+
+                    try
+                    {
+                        for (Element link: links)
+                        {
+                            String url2 =
+                                String.format(Locale.getDefault(), URL_FORMAT,
+                                              link.attr("href"));
+                            if (url.matches(SEARCH_PATTERN))
+                                continue;
+
+                            urls.add(url2);
+                            String s = link.text();
+                            list.add(s);
+                        }
+                    }
+
+                    catch (Exception e)
+                    {
+                        if (BuildConfig.DEBUG)
+                            Log.d(TAG, "StopsFromText " + links.first()
+                                  .parent().outerHtml());
+                        e.printStackTrace();
+                    }
+                }
+
+                else
+                {
+                    try
+                    {
+                        for (Element td: tds)
+                        {
+                            td = td.nextElementSibling();
+                            Element p = td.select("p").first();
+                            String url2 =
+                                String.format(Locale.getDefault(), URL_FORMAT,
+                                              p.select("a[href]").first()
+                                              .attr("href"));
+                            urls.add(url2);
+                            String s =
+                                String.format(Locale.getDefault(), STOP_FORMAT,
+                                              p.select("a[href]")
+                                              .first().text(),
+                                              p.nextElementSibling().text());
+                            list.add(s);
+                        }
+                    }
+
+                    catch (Exception e)
+                    {
+                        if (BuildConfig.DEBUG)
+                            Log.d(TAG, "StopsFromText " + tds.first()
+                                  .parent().outerHtml());
+                        e.printStackTrace();
+                    }
+                }
+
+                String[] stops = list.toArray(new String[0]);
+                builder.setItems(stops, (dialog, which) ->
+                {
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "Stop " + list.get(which));
+
+                    if (tds.isEmpty())
+                        executor.execute(() -> stopsFromText(urls.get(which)));
+
+                    else
+                        executor.execute(() -> busesFromStop(urls.get(which)));
+
+                    progressBar.setVisibility(View.VISIBLE);
+                });
+
+                builder.setNegativeButton(android.R.string.cancel, null);
+                builder.show();
+
+                progressBar.setVisibility(View.GONE);
+            });
+        }
+
+        catch (Exception e)
+        {
+            map.post(() ->
+            {
+                alertDialog(R.string.appName,
+                            e.getMessage(),
+                            android.R.string.ok);
+                progressBar.setVisibility(View.GONE);
+            });
+            e.printStackTrace();
+        }
     }
 
     // help
@@ -576,12 +839,9 @@ public class Buses extends Activity
     private class QueryTextListener
         implements SearchView.OnQueryTextListener
     {
-        private Buses buses;
-
         // QueryTextListener
-        QueryTextListener(Buses buses)
+        QueryTextListener()
         {
-            this.buses = buses;
         }
 
         // onQueryTextChange
@@ -600,8 +860,7 @@ public class Buses extends Activity
             {
                 String url = String.format(Locale.getDefault(),
                                            SINGLE_FORMAT, query);
-                BusesTask task = new BusesTask(buses);
-                task.execute(url);
+                executor.execute(() -> busesFromStop(url));
             }
 
             else
@@ -609,8 +868,7 @@ public class Buses extends Activity
                 String url = String.format(Locale.getDefault(),
                                            MULTI_FORMAT, query);
 
-                StopsTask task = new StopsTask(buses, false);
-                task.execute(url);
+                executor.execute(() -> stopsFromText(url));
             }
 
             progressBar.setVisibility(View.VISIBLE);
@@ -627,12 +885,12 @@ public class Buses extends Activity
     private class GestureListener
         extends GestureDetector.SimpleOnGestureListener
     {
-        Buses buses;
+        Context context;
 
         // GestureListener
-        GestureListener(Buses buses)
+        GestureListener(Context context)
         {
-            this.buses = buses;
+            this.context = context;
         }
 
         // onSingleTapConfirmed
@@ -642,376 +900,36 @@ public class Buses extends Activity
             // Get point
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
-            PostcodeTask task = new PostcodeTask(buses);
-            task.execute(point);
             progressBar.setVisibility(View.VISIBLE);
-
-            return true;
-        }
-    }
-
-    // PostcodeTask
-    private static class PostcodeTask
-        extends AsyncTask<IGeoPoint, Void, String>
-    {
-        private WeakReference<Buses> busesWeakReference;
-
-        // PostcodeTask
-        public PostcodeTask(Buses buses)
-        {
-            busesWeakReference = new WeakReference<>(buses);
-        }
-
-        // doInBackground
-        @Override
-        protected String doInBackground(IGeoPoint... params)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return null;
-
-            IGeoPoint point = params[0];
-            Geocoder coder = new Geocoder(buses);
-            // Get postcode
-            try
+            executor.execute(() ->
             {
-                List<Address> list = coder.getFromLocation(point.getLatitude(),
-                                                       point.getLongitude(), 1);
-                return list.get(0).getPostalCode();
-            }
-
-            catch(Exception e)
-            {
-                buses.runOnUiThread(() ->
-                {
-                    buses.alertDialog(R.string.appName,
-                                      e.getMessage(),
-                                      android.R.string.ok);
-                    buses.progressBar.setVisibility(View.GONE);
-                });
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        // onPostExecute
-        @Override
-        protected void onPostExecute(String code)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (code == null)
-                return;
-
-            String url = String.format(Locale.getDefault(),
-                                       MULTI_FORMAT, code);
-            StopsTask task = new StopsTask(buses, true);
-            task.execute(url);
-        }
-    }
-
-    // StopsTask
-    private static class StopsTask
-            extends AsyncTask<String, Void, Document>
-    {
-        private WeakReference<Buses> busesWeakReference;
-        private boolean getBuses;
-
-        // StopsTask
-        public StopsTask(Buses buses, boolean getBuses)
-        {
-            busesWeakReference = new WeakReference<>(buses);
-            this.getBuses = getBuses;
-        }
-
-        // doInBackground
-        @Override
-        protected Document doInBackground(String... params)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return null;
-
-            String url = params[0];
-
-            // Do web search
-            try
-            {
-                Document doc = Jsoup.connect(url).get();
-                return doc;
-            }
-
-            catch (Exception e)
-            {
-                buses.runOnUiThread(() ->
-                {
-                    buses.alertDialog(R.string.appName,
-                                      e.getMessage(),
-                                      android.R.string.ok);
-                    buses.progressBar.setVisibility(View.GONE);
-                });
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        // onPostExecute
-        @Override
-        protected void onPostExecute(Document doc)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (doc == null)
-                return;
-
-            String title = doc.select("h2").first().text();
-            Elements tds = doc.select("td.Number");
-            if (tds.first() != null && getBuses)
-            {
+                Geocoder coder = new Geocoder(context);
+                // Get postcode
                 try
                 {
-                    Element td = tds.first().nextElementSibling();
-                    Element p = td.select("p").first();
-                    String url =
-                        String.format(Locale.getDefault(), URL_FORMAT,
-                                      p.select("a[href]").first().attr("href"));
-
-                    BusesTask task = new BusesTask(buses);
-                    task.execute(url);
+                    List<Address> list =
+                        coder.getFromLocation(point.getLatitude(),
+                                              point.getLongitude(), 1);
+                    String code = list.get(0).getPostalCode();
+                    String url = String.format(Locale.getDefault(),
+                                               MULTI_FORMAT, code);
+                    stopsFromPostcode(url);
                 }
 
-                catch (Exception e)
+                catch(Exception ex)
                 {
-                    if (BuildConfig.DEBUG)
-                        Log.d(TAG, "StopsTask " + tds.first().outerHtml());
-                    e.printStackTrace();
-                }
-
-                buses.progressBar.setVisibility(View.VISIBLE);
-                return;
-            }
-
-            // Build dialog
-            AlertDialog.Builder builder = new AlertDialog.Builder(buses);
-            builder.setTitle(title);
-
-            List<String> list = new ArrayList<>();
-            List<String> urls = new ArrayList<>();
-
-            // Location
-            if (tds.isEmpty())
-            {
-                Elements links = doc.select("p.Stops > a[href]");
-
-                try
-                {
-                    for (Element link: links)
+                    map.post(() ->
                     {
-                        String url =
-                            String.format(Locale.getDefault(), URL_FORMAT,
-                                          link.attr("href"));
-                        if (url.matches(SEARCH_PATTERN))
-                            continue;
-
-                        urls.add(url);
-                        String s = link.text();
-                        list.add(s);
-                    }
+                        alertDialog(R.string.appName,
+                                          ex.getMessage(),
+                                          android.R.string.ok);
+                        progressBar.setVisibility(View.GONE);
+                    });
+                    ex.printStackTrace();
                 }
-
-                catch (Exception e)
-                {
-                    if (BuildConfig.DEBUG)
-                        Log.d(TAG, "StopsTask " + links.first()
-                              .parent().outerHtml());
-                    e.printStackTrace();
-                }
-            }
-
-            else
-            {
-                try
-                {
-                    for (Element td: tds)
-                    {
-                        td = td.nextElementSibling();
-                        Element p = td.select("p").first();
-                        String url =
-                            String.format(Locale.getDefault(), URL_FORMAT,
-                                          p.select("a[href]").first()
-                                          .attr("href"));
-                        urls.add(url);
-                        String s =
-                            String.format(Locale.getDefault(), STOP_FORMAT,
-                                          p.select("a[href]").first().text(),
-                                          p.nextElementSibling().text());
-                        list.add(s);
-                    }
-                }
-
-                catch (Exception e)
-                {
-                    if (BuildConfig.DEBUG)
-                        Log.d(TAG, "StopsTask " + tds.first()
-                              .parent().outerHtml());
-                    e.printStackTrace();
-                }
-            }
-
-            String[] stops = list.toArray(new String[0]);
-            builder.setItems(stops, (dialog, which) ->
-            {
-                if (BuildConfig.DEBUG)
-                    Log.d(TAG, "Stop " + list.get(which));
-
-                if (tds.isEmpty())
-                {
-                    StopsTask task = new StopsTask(buses, false);
-                    task.execute(urls.get(which));
-                }
-
-                else
-                {
-                    BusesTask task = new BusesTask(buses);
-                    task.execute(urls.get(which));
-                }
-
-                buses.progressBar.setVisibility(View.VISIBLE);
             });
 
-            builder.setNegativeButton(android.R.string.cancel, null);
-            builder.show();
-
-            buses.progressBar.setVisibility(View.GONE);
-        }
-    }
-
-    // BusesTask
-    private static class BusesTask
-            extends AsyncTask<String, String, Document>
-    {
-        private WeakReference<Buses> busesWeakReference;
-
-        // BusesTask
-        public BusesTask(Buses buses)
-        {
-            busesWeakReference = new WeakReference<>(buses);
-        }
-
-        // doInBackground
-        @Override
-        protected Document doInBackground(String... params)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return null;
-
-            String url = params[0];
-            publishProgress(url);
-
-            // Do web search
-            try
-            {
-                Document doc = Jsoup.connect(url).get();
-                return doc;
-            }
-
-            catch (Exception e)
-            {
-                buses.runOnUiThread(() ->
-                {
-                    buses.alertDialog(R.string.appName,
-                                      e.getMessage(),
-                                      android.R.string.ok);
-                    buses.progressBar.setVisibility(View.GONE);
-                });
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        // On progress update
-        @Override
-        protected void onProgressUpdate(String... urls)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "BusesTask url " + urls[0]);
-
-            // Get context
-            Context context = buses.getApplicationContext();
-            // Get preferences
-            SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-            // Get editor
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(PREF_URL, urls[0]);
-            editor.apply();
-        }
-
-        // onPostExecute
-        @Override
-        protected void onPostExecute(Document doc)
-        {
-            final Buses buses = busesWeakReference.get();
-            if (buses == null)
-                return;
-
-            if (doc == null)
-                return;
-
-            // Build dialog
-            AlertDialog.Builder builder = new AlertDialog.Builder(buses);
-            String title = doc.select("h2").first().text();
-            builder.setTitle(title);
-
-            List<String> list = new ArrayList<>();
-            Elements tds = doc.select("td.Number");
-            for (Element td: tds)
-            {
-                String n = td.select("p.Stops > a[href]").text();
-                td = td.nextElementSibling();
-                String s = td.select("p.Stops").first().text();
-                String bus = String.format(Locale.getDefault(), BUS_FORMAT,
-                                           n, s);
-                list.add(bus);
-            }
-
-            String[] busez = list.toArray(new String[0]);
-            builder.setItems(busez, null);
-
-            builder.setNegativeButton(android.R.string.ok, null);
-            builder.show();
-
-            // Get context
-            Context context = buses.getApplicationContext();
-            // Get preferences
-            SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-            // Get editor
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(PREF_TITLE, title);
-            JSONArray busArray = new JSONArray(list);
-            editor.putString(PREF_LIST, busArray.toString());
-            editor.apply();
-
-            if (BuildConfig.DEBUG)
-            {
-                Log.d(TAG, "Title " + title);
-                Log.d(TAG, "List " + busArray.toString());
-            }
-
-            buses.progressBar.setVisibility(View.GONE);
+            return true;
         }
     }
 }
