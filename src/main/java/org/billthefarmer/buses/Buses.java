@@ -37,7 +37,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Address;
-import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Build;
@@ -118,6 +117,10 @@ public class Buses extends Activity
     public static final String SINGLE_FORMAT =
         "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
         "%s?currentPage=0";
+
+    public static final String LOCATION_FORMAT =
+        "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults/" +
+        "ll_%f,%f~Location";
 
     public static final String STOP_FORMAT = "%s, %s";
     public static final String URL_FORMAT = "https://nextbuses.mobi%s";
@@ -520,34 +523,15 @@ public class Buses extends Activity
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
+            leftOverlay.setText(leftList);
+            map.invalidate();
 	}
 
         catch (Exception e) {}
-
-        leftOverlay.setText(leftList);
-
-        executor.execute(() ->
-        {
-            Geocoder coder = new Geocoder(this);
-            // Get postcode
-            try
-            {
-                List<Address> list =
-                    coder.getFromLocation(lat, lng, 1);
-                String code = list.get(0).getPostalCode();
-                map.post(() ->
-                {
-                    leftList.add(code);
-                    map.invalidate();
-                });
-            }
-
-            catch (Exception e) {}
-        });
     }
 
-    // stopsFromPostcode
-    private void stopsFromPostcode(String url)
+    // stopsFromLocation
+    private void stopsFromLocation(String url)
     {
         // Do web search
         try
@@ -556,9 +540,9 @@ public class Buses extends Activity
             map.post(() ->
             {
                 Elements tds = doc.select("td.Number");
-                if (tds.first() != null)
+                try
                 {
-                    try
+                    if (tds.first() != null)
                     {
                         Element td = tds.first().nextElementSibling();
                         Element p = td.select("p").first();
@@ -567,17 +551,30 @@ public class Buses extends Activity
                                           p.select("a[href]").first()
                                           .attr("href"));
                         executor.execute(() -> busesFromStop(url2));
+                        progressBar.setVisibility(View.VISIBLE);
                     }
 
-                    catch (Exception e)
+                    else
                     {
-                        if (BuildConfig.DEBUG)
-                            Log.d(TAG, "stopsFromPostcode " +
-                                  tds.first().outerHtml());
-                        e.printStackTrace();
+                        String title = doc.select("h2").first().text();
+                        String message = doc.select("h5").first().text();
+                        // Build dialog
+                        AlertDialog.Builder builder =
+                            new AlertDialog.Builder(this);
+                        builder.setTitle(title);
+                        builder.setMessage(message);
+                        builder.setNegativeButton(android.R.string.ok, null);
+                        builder.show();
+                        progressBar.setVisibility(View.GONE);
                     }
+                }
 
-                    progressBar.setVisibility(View.VISIBLE);
+                catch (Exception e)
+                {
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "stopsFromLocation " +
+                              tds.first().outerHtml());
+                    e.printStackTrace();
                 }
             });
         }
@@ -899,35 +896,11 @@ public class Buses extends Activity
             // Get point
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
+            String url =
+                String.format(Locale.getDefault(), LOCATION_FORMAT,
+                              point.getLatitude(), point.getLongitude());
+            executor.execute(() -> stopsFromLocation(url));
             progressBar.setVisibility(View.VISIBLE);
-            executor.execute(() ->
-            {
-                Geocoder coder = new Geocoder(context);
-                // Get postcode
-                try
-                {
-                    List<Address> list =
-                        coder.getFromLocation(point.getLatitude(),
-                                              point.getLongitude(), 1);
-                    String code = list.get(0).getPostalCode();
-                    String url = String.format(Locale.getDefault(),
-                                               MULTI_FORMAT, code);
-                    stopsFromPostcode(url);
-                }
-
-                catch(Exception ex)
-                {
-                    map.post(() ->
-                    {
-                        alertDialog(R.string.appName,
-                                          ex.getMessage(),
-                                          android.R.string.ok);
-                        progressBar.setVisibility(View.GONE);
-                    });
-                    ex.printStackTrace();
-                }
-            });
-
             return true;
         }
     }

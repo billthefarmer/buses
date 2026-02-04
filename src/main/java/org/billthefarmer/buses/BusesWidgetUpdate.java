@@ -84,9 +84,6 @@ public class BusesWidgetUpdate extends Service
 
         // Executor
         executor =  Executors.newSingleThreadExecutor();
-
-        if (BuildConfig.DEBUG)
-            Log.d(TAG, "onCreate " + handler);
     }
 
     // onStartCommand
@@ -94,9 +91,6 @@ public class BusesWidgetUpdate extends Service
     @SuppressWarnings("deprecation")
     public int onStartCommand(Intent intent, int flags, int startId)
     {
-        if (BuildConfig.DEBUG)
-            Log.d(TAG, "onStartCommand " + intent);
-
         startBusesTask();
 
         // Schedule update
@@ -179,9 +173,6 @@ public class BusesWidgetUpdate extends Service
                     return;
                 }
 
-                if (BuildConfig.DEBUG)
-                    Log.d(TAG, "onPostExecute " + doc.head());
-
                 try
                 {
                     String title = doc.select("h2").first().text();
@@ -222,10 +213,7 @@ public class BusesWidgetUpdate extends Service
                                        appWidgetIds);
                     broadcast.putExtra(EXTRA_UPDATE_DONE, true);
                     sendBroadcast(broadcast);
-
-                    if (BuildConfig.DEBUG)
-                        Log.d(TAG, "Broadcast " + broadcast);
-                }
+               }
 
                 catch (Exception e)
                 {

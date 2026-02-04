@@ -47,10 +47,6 @@ public class BusesWidgetRefresh extends Activity
         // Start update service
         Intent update = new Intent(this, BusesWidgetUpdate.class);
         startService(update);
-
-        if (BuildConfig.DEBUG)
-            Log.d(TAG, "Update " + update);
-
         finish();
     }
 }

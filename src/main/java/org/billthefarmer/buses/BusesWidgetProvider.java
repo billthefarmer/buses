@@ -153,9 +153,6 @@ public class BusesWidgetProvider extends AppWidgetProvider
         {
             Intent update = new Intent(context, BusesWidgetUpdate.class);
             context.startService(update);
-
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "Update " + update);
         }
 
         catch (Exception e)
