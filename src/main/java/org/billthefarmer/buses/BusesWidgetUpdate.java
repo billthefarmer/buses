@@ -165,60 +165,73 @@ public class BusesWidgetUpdate extends Service
         }, RESET_DELAY);
     }
 
+    // busesFromUrl
     private void busesFromUrl(String url)
     {
         try
         {
             Document doc = Jsoup.connect(url).get();
-            if (doc == null)
+            handler.post(() ->
             {
-                stopSelf();
-                return;
-            }
+                if (doc == null)
+                {
+                    stopSelf();
+                    return;
+                }
 
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "onPostExecute " + doc.head());
+                if (BuildConfig.DEBUG)
+                    Log.d(TAG, "onPostExecute " + doc.head());
 
-            String title = doc.select("h2").first().text();
+                try
+                {
+                    String title = doc.select("h2").first().text();
 
-            List<String> list = new ArrayList<>();
-            Elements tds = doc.select("td.Number");
-            for (Element td: tds)
-            {
-                String n = td.select("p.Stops > a[href]").text();
-                td = td.nextElementSibling();
-                String s = td.select("p.Stops").first().text();
-                String bus = String.format(Locale.getDefault(),
-                                           Buses.BUS_FORMAT, n, s);
-                list.add(bus);
-            }
+                    List<String> list = new ArrayList<>();
+                    Elements tds = doc.select("td.Number");
+                    for (Element td: tds)
+                    {
+                        String n = td.select("p.Stops > a[href]").text();
+                        td = td.nextElementSibling();
+                        String s = td.select("p.Stops").first().text();
+                        String bus = String.format(Locale.getDefault(),
+                                                   Buses.BUS_FORMAT, n, s);
+                        list.add(bus);
+                    }
 
-            // Get preferences
-            SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(this);
-            // Get editor
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(Buses.PREF_TITLE, title);
-            JSONArray busArray = new JSONArray(list);
-            editor.putString(Buses.PREF_LIST, busArray.toString());
-            editor.apply();
+                    // Get preferences
+                    SharedPreferences preferences =
+                        PreferenceManager.getDefaultSharedPreferences(this);
+                    // Get editor
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putString(Buses.PREF_TITLE, title);
+                    JSONArray busArray = new JSONArray(list);
+                    editor.putString(Buses.PREF_LIST, busArray.toString());
+                    editor.apply();
 
-            // Get manager
-            AppWidgetManager appWidgetManager =
-                AppWidgetManager.getInstance(this);
-            ComponentName provider = new
-                ComponentName(this, BusesWidgetProvider.class);
+                    // Get manager
+                    AppWidgetManager appWidgetManager =
+                        AppWidgetManager.getInstance(this);
+                    ComponentName provider = new
+                        ComponentName(this, BusesWidgetProvider.class);
 
-            int appWidgetIds[] = appWidgetManager.getAppWidgetIds(provider);
-            Intent broadcast = new
-                Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,
-                               appWidgetIds);
-            broadcast.putExtra(EXTRA_UPDATE_DONE, true);
-            sendBroadcast(broadcast);
+                    int appWidgetIds[] = appWidgetManager
+                        .getAppWidgetIds(provider);
+                    Intent broadcast = new
+                        Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+                    broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,
+                                       appWidgetIds);
+                    broadcast.putExtra(EXTRA_UPDATE_DONE, true);
+                    sendBroadcast(broadcast);
 
-            if (BuildConfig.DEBUG)
-                Log.d(TAG, "Broadcast " + broadcast);
+                    if (BuildConfig.DEBUG)
+                        Log.d(TAG, "Broadcast " + broadcast);
+                }
+
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            });
         }
 
         catch (Exception e)
