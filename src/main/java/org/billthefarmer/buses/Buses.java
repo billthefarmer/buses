@@ -125,7 +125,7 @@ public class Buses extends Activity
     public static final String BUS_FORMAT = "%s: %s";
 
     public static final String SEARCH_PATTERN = ".*searchMap=true.*";
-    public static final String LOCALITY_PATTERN = "/ll_";
+    public static final String LOCALITY_PATTERN = ".*/ll_.*";
     public static final String STOP_PATTERN =
         "((nld|man|lin|bou|ahl|her|buc|shr|dvn|rtl|mer|twr|nth|cor|war|ntm|" +
         "sta|bfs|nts|cum|sto|blp|wil|che|dor|knt|glo|woc|oxf|brk|chw|wok|" +
@@ -746,7 +746,7 @@ public class Buses extends Activity
                 builder.setItems(stops, (dialog, which) ->
                 {
                     String url2 = urls.get(which);
-                    if (url2.contains(LOCALITY_PATTERN))
+                    if (url2.matches(LOCALITY_PATTERN))
                         executor.execute(() -> stopsFromText(url2));
 
                     else
