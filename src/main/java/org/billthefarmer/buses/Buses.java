@@ -70,8 +70,6 @@ import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
-import java.lang.ref.WeakReference;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
@@ -291,7 +289,7 @@ public class Buses extends Activity
         });
 
         // Executor
-        executor =  Executors.newSingleThreadExecutor();
+        executor = Executors.newSingleThreadExecutor();
 
         button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
