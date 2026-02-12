@@ -23,13 +23,13 @@ allprojects {
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 35
+    compileSdkVersion 34
     namespace "org.billthefarmer.buses"
 
     defaultConfig {
         applicationId "org.billthefarmer.buses"
         minSdkVersion 21
-        targetSdkVersion 35
+        targetSdkVersion 34
         versionName "1.09"
         versionCode 109
 
@@ -47,9 +47,8 @@ android {
     }
 
     lintOptions {
-	disable 'RtlHardcoded', 'ExpiredTargetSdkVersion', 'AndroidGradlePluginVersion',
-            'NonConstantResourceId', 'ClickableViewAccessibility', 'IconDensities',
-	    'OldTargetApi', 'GradleDependency', 'ScopedStorage'
+	disable 'ScopedStorage', 'OldTargetApi', 'NonConstantResourceId', 'GradleDependency',
+	'AndroidGradlePluginVersion'
 	// abortOnError false
     }
 }

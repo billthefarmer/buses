@@ -12,7 +12,7 @@
       android:id="@+id/locate"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:layout_marginRight="28dp"
+      android:layout_marginEnd="28dp"
       android:layout_marginBottom="28dp"
       android:layout_gravity="bottom|end"
       android:elevation="6dp"

@@ -285,6 +285,7 @@ public class Buses extends Activity
         map.setOnTouchListener((v, event) ->
         {
             gestureDetector.onTouchEvent(event);
+            v.performClick();
             return false;
         });
 
