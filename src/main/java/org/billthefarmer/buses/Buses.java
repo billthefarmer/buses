@@ -37,10 +37,12 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.text.SpannableStringBuilder;
 import android.text.method.LinkMovementMethod;
@@ -133,12 +135,11 @@ public class Buses extends Activity
         "lei|mlt|cej|hal|ham|sur|hrt)[a-z]{5})|[0-9]{8}";
 
     private final static int REQUEST_PERMS = 1;
+    private final static int POSTCODE_DELAY = 1000;
 
     private DateFormat dateFormat;
     private ImageButton button;
-    private Location last = null;
     private Location location = null;
-    private LocationListener listener;
     private MapView map = null;  
     private MenuItem searchItem;
     private MyLocationNewOverlay myLocation;
@@ -149,6 +150,7 @@ public class Buses extends Activity
 
     private GestureDetector gestureDetector;
     private ExecutorService executor;
+    private Geocoder geocoder;
 
     private boolean located;
 
@@ -240,7 +242,6 @@ public class Buses extends Activity
 
             // Get location
             location = savedInstanceState.getParcelable(LOCATION);
-            last = location;
 
             // Set zoom
             map.getController().setZoom(savedInstanceState
@@ -291,8 +292,7 @@ public class Buses extends Activity
 
         // Executor
         executor = Executors.newSingleThreadExecutor();
-
-        button = findViewById(R.id.locate);
+        geocoder = new Geocoder(this);button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
         {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -527,6 +527,26 @@ public class Buses extends Activity
 	}
 
         catch (Exception e) {}
+
+        Handler handler = map.getHandler();
+        handler.removeCallbacksAndMessages(location);
+        handler.postAtTime(() ->
+        {
+            executor.execute(() ->
+            {
+                try
+                {
+                    List<Address> list = geocoder.getFromLocation(lat, lng, 1);
+                    String postcode = list.get(0).getPostalCode();
+                    handler.post(() ->
+                    {
+                        leftList.add(postcode);
+                    });
+                }
+
+                catch(Exception e) {}
+            });
+        }, location, SystemClock.uptimeMillis() + POSTCODE_DELAY);
     }
 
     // stopsFromLocation
