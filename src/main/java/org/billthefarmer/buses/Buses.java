@@ -495,10 +495,12 @@ public class Buses extends Activity
         List<String> rightList = new ArrayList<String>();
         rightList.add(String.format(Locale.getDefault(),
                                    "%s, %s", latString, lngString));
-        rightList.add(String.format(Locale.getDefault(),
-                                       "Altitude: %1.0fm", alt));
-        rightList.add(String.format(Locale.getDefault(),
-                                       "Accuracy: %1.0fm", acc));
+        if (alt > 0.0)
+            rightList.add(String.format(Locale.getDefault(),
+                                        "Altitude: %1.0fm", alt));
+        if (alt > 0.0)
+            rightList.add(String.format(Locale.getDefault(),
+                                        "Accuracy: %1.0fm", acc));
         rightOverlay.setText(rightList);
 
 	long time = location.getTime();
