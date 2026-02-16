@@ -151,6 +151,7 @@ public class Buses extends Activity
     private GestureDetector gestureDetector;
     private ExecutorService executor;
     private Geocoder geocoder;
+    private String postcode = "";
 
     private boolean located;
 
@@ -524,6 +525,7 @@ public class Buses extends Activity
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
+            leftList.add(postcode);
             leftOverlay.setText(leftList);
             map.invalidate();
 	}
@@ -540,10 +542,7 @@ public class Buses extends Activity
                 {
                     List<Address> list = geocoder.getFromLocation(lat, lng, 1);
                     String postcode = list.get(0).getPostalCode();
-                    handler.post(() ->
-                    {
-                        leftList.add(postcode);
-                    });
+                    handler.post(() -> this.postcode = postcode);
                 }
 
                 catch(Exception e) {}
