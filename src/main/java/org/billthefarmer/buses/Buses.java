@@ -46,6 +46,7 @@ import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.text.SpannableStringBuilder;
 import android.text.method.LinkMovementMethod;
+import android.util.JsonReader;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Menu;
@@ -72,13 +73,17 @@ import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
+import java.io.InputStreamReader;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -109,6 +114,13 @@ public class Buses extends Activity
     public static final String MAPCENTRE = "mapcentre";
     public static final String ZOOMLEVEL = "zoomlevel";
     public static final String LOCATED = "located";
+
+    public static final String ATCOCODE = "ATCOCode";
+    public static final String LATITUDE = "Latitude";
+    public static final String LONGITUDE = "Longitude";
+
+    public static final String BUSTIMES_STOP =
+        "https://bustimes.org/stops/%s";
 
     public static final String MULTI_FORMAT =
         "https://nextbuses.mobi/WebView/BusStopSearch/BusStopSearchResults" +
@@ -151,9 +163,12 @@ public class Buses extends Activity
     private GestureDetector gestureDetector;
     private ExecutorService executor;
     private Geocoder geocoder;
-    private String postcode = "";
+
+    private List<Stop> stopList;
 
     private boolean located;
+    private boolean started;
+    private boolean loaded;
 
     @Override
     @SuppressWarnings("deprecation")
@@ -287,13 +302,14 @@ public class Buses extends Activity
         map.setOnTouchListener((v, event) ->
         {
             gestureDetector.onTouchEvent(event);
-            v.performClick();
-            return false;
+            return v.performClick();
         });
 
         // Executor
         executor = Executors.newSingleThreadExecutor();
-        geocoder = new Geocoder(this);button = findViewById(R.id.locate);
+        geocoder = new Geocoder(this);
+
+        button = findViewById(R.id.locate);
         button.setOnClickListener((v) ->
         {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -315,9 +331,12 @@ public class Buses extends Activity
             // Set zoom
             map.getController().setZoom(19.0);
             showLocation(myLocation.getLastFix());
+            progressBar.setVisibility(View.GONE);
         });
 
         progressBar = findViewById(R.id.progress);
+
+        stopReader(R.raw.stops);
 
         // Check permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -525,77 +544,79 @@ public class Buses extends Activity
             leftList.add(OSString);
             leftList.add(String.format(Locale.getDefault(),
                                        "%1.0f, %1.0f", east, north));
-            leftList.add(postcode);
             leftOverlay.setText(leftList);
             map.invalidate();
 	}
 
         catch (Exception e) {}
 
-        Handler handler = map.getHandler();
-        handler.removeCallbacksAndMessages(location);
-        handler.postAtTime(() ->
-        {
-            executor.execute(() ->
-            {
-                try
-                {
-                    List<Address> list = geocoder.getFromLocation(lat, lng, 1);
-                    String postcode = list.get(0).getPostalCode();
-                    handler.post(() -> this.postcode = postcode);
-                }
+        if (started)
+            return;
 
-                catch(Exception e) {}
-            });
-        }, location, SystemClock.uptimeMillis() + POSTCODE_DELAY);
+        Log.d(TAG, "Postcode execute " + started);
+        started = true;
+        executor.execute(() ->
+        {
+            try
+            {
+                List<Address> list = geocoder.getFromLocation(lat, lng, 1);
+                String postcode = list.get(0).getPostalCode();
+                map.post(() ->
+                {
+                    leftList.add(postcode);
+                    map.invalidate();
+                    Log.d(TAG, "Postcode done " + started);
+                    started = false;
+                });
+            }
+
+            catch(Exception e) {}
+        });
     }
 
     // stopsFromLocation
-    private void stopsFromLocation(String url)
+    private void stopsFromLocation(double lat, double lng)
     {
+        Stop nearest = null;
+        double min = Double.MAX_VALUE;
+        for (Stop stop: stopList)
+        {
+            double dist = Math.hypot(lat - stop.lat, lng - stop.lng);
+            if (dist < min)
+            {
+                nearest = stop;
+                min = dist;
+            }
+
+            if (min < 0.00025)
+                break;
+        }
+
+        String url = String.format(Locale.getDefault(), BUSTIMES_STOP,
+                                   nearest.code);
         // Do web search
         try
         {
             Document doc = Jsoup.connect(url).get();
             map.post(() ->
             {
-                Elements tds = doc.select("td.Number");
-                try
-                {
-                    if (tds.first() != null)
-                    {
-                        Element td = tds.first().nextElementSibling();
-                        Element p = td.select("p").first();
-                        String url2 =
-                            String.format(Locale.getDefault(), URL_FORMAT,
-                                          p.select("a[href]").first()
-                                          .attr("href"));
-                        executor.execute(() -> busesFromStop(url2));
-                        progressBar.setVisibility(View.VISIBLE);
-                    }
+                Element content = doc.selectFirst("#content");
 
-                    else
-                    {
-                        String title = doc.select("h2").first().text();
-                        String message = doc.select("h5").first().text();
-                        // Build dialog
-                        AlertDialog.Builder builder =
-                            new AlertDialog.Builder(this);
-                        builder.setTitle(title);
-                        builder.setMessage(message);
-                        builder.setNegativeButton(android.R.string.ok, null);
-                        builder.show();
-                        progressBar.setVisibility(View.GONE);
-                    }
+                // Build dialog
+                AlertDialog.Builder builder =
+                    new AlertDialog.Builder(this);
+                String title = content.selectFirst("h1").text();
+                builder.setTitle(title);
+                List<String> list = new ArrayList<>();
+                Elements trs = content.selectFirst("tbody").select("tr");
+                for (Element tr: trs)
+                {
                 }
 
-                catch (Exception e)
-                {
-                    if (BuildConfig.DEBUG)
-                        Log.d(TAG, "stopsFromLocation " +
-                              tds.first().outerHtml());
-                    e.printStackTrace();
-                }
+                builder.setNegativeButton(android.R.string.ok, null);
+                builder.show();
+
+                progressBar.setVisibility(View.GONE);
             });
         }
 
@@ -851,6 +872,78 @@ public class Buses extends Activity
         builder.show();
     }
 
+    // stopReader
+    private void stopReader(int id)
+    {
+        List<Stop> list = new ArrayList<>();
+        executor.execute(() ->
+        {
+            try (JsonReader reader = new
+                 JsonReader(new InputStreamReader
+                            (getResources().openRawResource(id))))
+            {
+                reader.beginArray();
+                while (reader.hasNext())
+                {
+                    String code = null;
+                    double lng = 0;
+                    double lat = 0;
+
+                    reader.beginObject();
+                    while (reader.hasNext())
+                    {
+                        switch (reader.nextName())
+                        {
+                        case ATCOCODE:
+                            code = reader.nextString();
+                            break;
+
+                        case LATITUDE:
+                            lat = reader.nextDouble();
+                            break;
+
+                        case LONGITUDE:
+                            lng = reader.nextDouble();
+                            break;
+
+                        default:
+                            reader.skipValue();
+                        }
+                    }
+                    reader.endObject();
+                    Stop stop = new Stop(code, lat, lng);
+                    list.add(stop);
+                }
+                reader.endArray();
+            }
+
+            catch (Exception e)
+            {
+                this.map.post(() -> alertDialog(R.string.appName,
+                                                e.getMessage(),
+                                                android.R.string.ok));
+                e.printStackTrace();
+            }
+
+            stopList = list;
+            loaded = true;
+        });
+    }
+
+    // Stop
+    private class Stop
+    {
+        String code;
+        double lat;
+        double lng;
+        Stop(String code, double lat, double lng)
+        {
+            this.code = code;
+            this.lat = lat;
+            this.lng = lng;
+        }
+    }
+
     // QueryTextListener
     private class QueryTextListener
         implements SearchView.OnQueryTextListener
@@ -913,13 +1006,20 @@ public class Buses extends Activity
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e)
         {
+            // Check stops loaded
+            if (!loaded)
+            {
+                alertDialog(R.string.appName,
+                            context.getString(R.string.loaded),
+                            android.R.string.ok);
+                return false;
+            }
+
             // Get point
             IGeoPoint point = map.getProjection()
                 .fromPixels((int) e.getX(), (int) e.getY());
-            String url =
-                String.format(Locale.getDefault(), LOCATION_FORMAT,
-                              point.getLatitude(), point.getLongitude());
-            executor.execute(() -> stopsFromLocation(url));
+            executor.execute(() -> stopsFromLocation(point.getLatitude(),
+                                                     point.getLongitude()));
             progressBar.setVisibility(View.VISIBLE);
             return true;
         }
