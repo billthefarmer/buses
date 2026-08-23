@@ -175,57 +175,66 @@ public class BusesWidgetUpdate extends Service
                     return;
                 }
 
-                Element content = doc.selectFirst("#content");
-                String title = content.selectFirst("h1").text();
-                List<String> list = new ArrayList<>();
-                Element tbody = content.selectFirst("tbody");
-                if (tbody != null)
+                try
                 {
-                    Elements trs = tbody.select("tr");
-                    for (Element tr: trs)
+                    Element content = doc.selectFirst("#content");
+                    String title = content.selectFirst("h1").text();
+                    List<String> list = new ArrayList<>();
+                    Element tbody = content.selectFirst("tbody");
+                    if (tbody != null)
                     {
-                        String num = tr.selectFirst("td.nowrap > a").text();
-                        String desc =
-                            tr.selectFirst("td.nowrap + td").ownText();
-                        String time = null;
-                        if (tr.selectFirst
-                            ("td.nowrap + td + td + td").hasText())
-                            time = tr.selectFirst
-                                ("td.nowrap + td + td + td").text();
+                        Elements trs = tbody.select("tr");
+                        for (Element tr: trs)
+                        {
+                            String num = tr.selectFirst("td.nowrap > a").text();
+                            String desc =
+                                tr.selectFirst("td.nowrap + td").ownText();
+                            String time = null;
+                            if (tr.selectFirst
+                                ("td.nowrap + td + td + td").hasText())
+                                time = tr.selectFirst
+                                    ("td.nowrap + td + td + td").text();
 
-                        else
-                            time = tr.selectFirst("td.nowrap + td + td").text();
+                            else
+                                time = tr.selectFirst
+                                    ("td.nowrap + td + td").text();
                             
-                        String bus = String.format(Locale.getDefault(),
-                                                   Buses.BUS_FORMAT,
-                                                   num, desc, time);
-                        list.add(bus);
+                            String bus = String.format(Locale.getDefault(),
+                                                       Buses.BUS_FORMAT,
+                                                       num, desc, time);
+                            list.add(bus);
+                        }
+
+                        // Get preferences
+                        SharedPreferences preferences =
+                            PreferenceManager.getDefaultSharedPreferences(this);
+                        // Get editor
+                        SharedPreferences.Editor editor = preferences.edit();
+                        editor.putString(Buses.PREF_TITLE, title);
+                        JSONArray busArray = new JSONArray(list);
+                        editor.putString(Buses.PREF_LIST, busArray.toString());
+                        editor.apply();
+
+                        // Get manager
+                        AppWidgetManager appWidgetManager =
+                            AppWidgetManager.getInstance(this);
+                        ComponentName provider = new
+                            ComponentName(this, BusesWidgetProvider.class);
+
+                        int appWidgetIds[] = appWidgetManager
+                            .getAppWidgetIds(provider);
+                        Intent broadcast = new
+                            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+                        broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,
+                                           appWidgetIds);
+                        broadcast.putExtra(EXTRA_UPDATE_DONE, true);
+                        sendBroadcast(broadcast);
                     }
+                }
 
-                    // Get preferences
-                    SharedPreferences preferences =
-                        PreferenceManager.getDefaultSharedPreferences(this);
-                    // Get editor
-                    SharedPreferences.Editor editor = preferences.edit();
-                    editor.putString(Buses.PREF_TITLE, title);
-                    JSONArray busArray = new JSONArray(list);
-                    editor.putString(Buses.PREF_LIST, busArray.toString());
-                    editor.apply();
-
-                    // Get manager
-                    AppWidgetManager appWidgetManager =
-                        AppWidgetManager.getInstance(this);
-                    ComponentName provider = new
-                        ComponentName(this, BusesWidgetProvider.class);
-
-                    int appWidgetIds[] = appWidgetManager
-                        .getAppWidgetIds(provider);
-                    Intent broadcast = new
-                        Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-                    broadcast.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,
-                                       appWidgetIds);
-                    broadcast.putExtra(EXTRA_UPDATE_DONE, true);
-                    sendBroadcast(broadcast);
+                catch (Exception e)
+                {
+                    e.printStackTrace();
                 }
             });
         }
