@@ -3,18 +3,12 @@
 
 Geographical GB bus times lookup app.
 
-### Non-free network services
-Unfortunately, this app had been tagged by F-Droid as promoting
-non-free network services. Actually, this app doesn't promote anything
-apart from buses. It does use a web site to get it's data, but then so
-do several other bus times apps for various locations also on F-Droid
-which haven't been tagged.
-
 ![Buses](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses.png) ![Zoom](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/Buses-zoom.png)
 
 ## Intro
 Scroll and zoom the map to find a bus stop and tap the map to get bus
-times from that stop.
+times from that stop. The app will be busy loading a list of bus stops
+when it is opened and will not respond until it is done.
 
 ## Search
 
@@ -23,10 +17,11 @@ times from that stop.
 There are several ways of finding bus times:
 
  * **Tap the map** &ndash; This will show a list of bus times from the
-    nearest stop.
+    nearest stop. If there are no buses this will show a list of bus
+    services from that stop.
  * **Tap the search button** &ndash; Type in a street name and town, or
     postcode and tap the button on the search widget or keyboard. This
-    will show a list of bus stops.
+    will show a list of locations and bus stops.
  * **Tap the search button** &ndash; Type in the eight character code
     on the bus stop sign, if it exists, and tap the button on the
     search widget or keyboard. This will show a list of bus times from

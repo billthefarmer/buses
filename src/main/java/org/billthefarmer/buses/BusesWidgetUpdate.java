@@ -133,9 +133,9 @@ public class BusesWidgetUpdate extends Service
         // Get preferences
         SharedPreferences preferences =
             PreferenceManager.getDefaultSharedPreferences(this);
-        String url = preferences.getString(Buses.PREF_URL, null);
+        String code = preferences.getString(Buses.PREF_CODE, null);
 
-        executor.execute(() -> busesFromUrl(url));
+        executor.execute(() -> busesFromCode(code));
 
         // Get the layout for the widget
         RemoteViews views = new
@@ -159,9 +159,11 @@ public class BusesWidgetUpdate extends Service
         }, RESET_DELAY);
     }
 
-    // busesFromUrl
-    private void busesFromUrl(String url)
+    // busesFromCode
+    private void busesFromCode(String code)
     {
+        String url = String.format(Locale.getDefault(),
+                                   Buses.BUSTIMES_STOP, code);
         try
         {
             Document doc = Jsoup.connect(url).get();
@@ -173,19 +175,30 @@ public class BusesWidgetUpdate extends Service
                     return;
                 }
 
-                try
+                Element content = doc.selectFirst("#content");
+                String title = content.selectFirst("h1").text();
+                List<String> list = new ArrayList<>();
+                Element tbody = content.selectFirst("tbody");
+                if (tbody != null)
                 {
-                    String title = doc.select("h2").first().text();
-
-                    List<String> list = new ArrayList<>();
-                    Elements tds = doc.select("td.Number");
-                    for (Element td: tds)
+                    Elements trs = tbody.select("tr");
+                    for (Element tr: trs)
                     {
-                        String n = td.select("p.Stops > a[href]").text();
-                        td = td.nextElementSibling();
-                        String s = td.select("p.Stops").first().text();
+                        String num = tr.selectFirst("td.nowrap > a").text();
+                        String desc =
+                            tr.selectFirst("td.nowrap + td").ownText();
+                        String time = null;
+                        if (tr.selectFirst
+                            ("td.nowrap + td + td + td").hasText())
+                            time = tr.selectFirst
+                                ("td.nowrap + td + td + td").text();
+
+                        else
+                            time = tr.selectFirst("td.nowrap + td + td").text();
+                            
                         String bus = String.format(Locale.getDefault(),
-                                                   Buses.BUS_FORMAT, n, s);
+                                                   Buses.BUS_FORMAT,
+                                                   num, desc, time);
                         list.add(bus);
                     }
 
@@ -213,11 +226,6 @@ public class BusesWidgetUpdate extends Service
                                        appWidgetIds);
                     broadcast.putExtra(EXTRA_UPDATE_DONE, true);
                     sendBroadcast(broadcast);
-               }
-
-                catch (Exception e)
-                {
-                    e.printStackTrace();
                 }
             });
         }

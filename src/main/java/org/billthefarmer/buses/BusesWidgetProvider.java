@@ -94,6 +94,7 @@ public class BusesWidgetProvider extends AppWidgetProvider
         DateFormat format = DateFormat.getTimeInstance();
         buffer.append(context.getString(R.string.updated))
             .append(format.format(new Date()))
+            .append(System.getProperty("line.separator"))
             .append(System.getProperty("line.separator"));
 
         // Check list

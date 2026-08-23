@@ -8,7 +8,10 @@
   <string name="about">About</string>
   <string name="locate">Locate</string>
   <string name="updated">"Updated: "</string>
-  <string name="loaded">Stops not loaded</string>
+  <string name="loaded">
+    Bus stops not loaded. The app is loading a list of bus stops to be
+    searched for the nearest stop when the map is tapped. Please wait.
+  </string>
   <string name="version" formatted="false"><a
   href="https://github.com/billthefarmer/print/releases/latest">%s</a>\n\nBuilt
   %s\n\nCopyright \u00A9 2021 <a
