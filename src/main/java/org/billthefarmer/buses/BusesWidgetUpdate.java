@@ -187,15 +187,11 @@ public class BusesWidgetUpdate extends Service
                         String num = tr.selectFirst("td.nowrap > a").text();
                         String desc =
                             tr.selectFirst("td.nowrap + td").ownText();
-                        String time = null;
-                        if (tr.selectFirst
-                            ("td.nowrap + td + td + td").hasText())
-                            time = tr.selectFirst
-                                ("td.nowrap + td + td + td").text();
-
-                        else
-                            time = tr.selectFirst("td.nowrap + td + td").text();
-                            
+                        String time = tr.selectFirst
+                            ("td.nowrap + td + td").text();
+                        Element td = tr.selectFirst("td.nowrap + td + td + td");
+                        if (td != null && td.hasText())
+                            time = time + "  " + td.text();
                         String bus = String.format(Locale.getDefault(),
                                                    Buses.BUS_FORMAT,
                                                    num, desc, time);
