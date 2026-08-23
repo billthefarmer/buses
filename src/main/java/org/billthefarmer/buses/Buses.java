@@ -115,6 +115,8 @@ public class Buses extends Activity
 
     public static final String ATCOCODE = "ATCOCode";
     public static final String NAPTANCODE = "NaptanCode";
+    public static final String EASTING = "Easting";
+    public static final String NORTHING = "Northing";
     public static final String LATITUDE = "Latitude";
     public static final String LONGITUDE = "Longitude";
 
@@ -580,94 +582,30 @@ public class Buses extends Activity
             return;
         }
 
-        Stop nearest = null;
-        double min = Double.MAX_VALUE;
-        for (Stop stop: stopList)
-        {
-            double dist = Math.hypot(lat - stop.lat, lng - stop.lng);
-            if (dist < min)
-            {
-                nearest = stop;
-                min = dist;
-            }
-
-            if (min < 0.00025)
-                break;
-        }
-
-        busesFromCode(nearest.code);
-    }
-
-    private void busesFromCode(String code)
-    {
-        String url = String.format(Locale.getDefault(), BUSTIMES_STOP, code);
-        // Do web search
         try
         {
-            Document doc = Jsoup.connect(url).get();
-            map.post(() ->
+            LatLng coord = new LatLng(lat, lng);
+            coord.toOSGB36();
+            OSRef OSCoord = coord.toOSRef();
+            double east = OSCoord.getEasting();
+            double nort = OSCoord.getNorthing();
+
+            Stop nearest = null;
+            double min = Double.MAX_VALUE;
+            for (Stop stop: stopList)
             {
-                Element content = doc.selectFirst("#content");
-
-                // Build dialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                String title = content.selectFirst("h1").text();
-                builder.setTitle(title);
-                List<String> list = new ArrayList<>();
-                Element tbody = content.selectFirst("tbody");
-                if (tbody != null)
+                double dist = Math.hypot(east - stop.east, nort - stop.nort);
+                if (dist < min)
                 {
-                    Elements trs = tbody.select("tr");
-                    for (Element tr: trs)
-                    {
-                        String num = tr.selectFirst("td.nowrap > a").text();
-                        String desc =
-                            tr.selectFirst("td.nowrap + td").ownText();
-                        String time = tr.selectFirst
-                            ("td.nowrap + td + td").text();
-                        Element td = tr.selectFirst("td.nowrap + td + td + td");
-                        if (td != null && td.hasText())
-                            time = time + "  " + td.text();
-                        String bus = String.format(Locale.getDefault(),
-                                                   BUS_FORMAT, num, desc, time);
-                        list.add(bus);
-                    }
-                    String[] buses = list.toArray(new String[0]);
-                    builder.setItems(buses, null);
+                    nearest = stop;
+                    min = dist;
                 }
 
-                else
-                {
-                    Element h2 = content.selectFirst("h2");
-                    if (h2 != null && h2.hasText())
-                        list.add(h2.text());
-                    Element ul = content.selectFirst("ul.has-smalls");
-                    if (ul != null)
-                    {
-                        Elements lis = ul.select("li");
-                        for (Element li: lis)
-                        {
-                            if (li.selectFirst("strong.name") != null)
-                            {
-                                String num =
-                                    li.selectFirst("strong.name").text();
-                                String desc =
-                                    li.selectFirst("span.description").text();
-                                String bus = String.format(Locale.getDefault(),
-                                                       STOP_FORMAT, num, desc);
-                                list.add(bus);
-                            }
-                        }
-                    }
-                    String[] buses = list.toArray(new String[0]);
-                    builder.setItems(buses, null);
-                }
+                if (min < 10.0)
+                    break;
+            }
 
-                builder.setNegativeButton(android.R.string.ok, null);
-                builder.show();
-
-                progressBar.setVisibility(View.GONE);
-            });
+            busesFromCode(nearest.code);
         }
 
         catch (Exception e)
@@ -679,7 +617,109 @@ public class Buses extends Activity
                             android.R.string.ok);
                 progressBar.setVisibility(View.GONE);
             });
+
             e.printStackTrace();
+        } 
+    }
+
+    private void busesFromCode(String code)
+    {
+        String url = String.format(Locale.getDefault(), BUSTIMES_STOP, code);
+        // Do web search
+        try
+        {
+            Document doc = Jsoup.connect(url).get();
+            map.post(() ->
+            {
+                try
+                {
+                    Element content = doc.selectFirst("#content");
+
+                    // Build dialog
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    String title = content.selectFirst("h1").text();
+                    builder.setTitle(title);
+                    List<String> list = new ArrayList<>();
+                    Element tbody = content.selectFirst("tbody");
+                    if (tbody != null)
+                    {
+                        Elements trs = tbody.select("tr");
+                        for (Element tr: trs)
+                        {
+                            String num = tr.selectFirst("td.nowrap > a").text();
+                            String desc =
+                                tr.selectFirst("td.nowrap + td").ownText();
+                            String time = tr.selectFirst
+                                ("td.nowrap + td + td").text();
+                            Element td =
+                                tr.selectFirst("td.nowrap + td + td + td");
+                            if (td != null && td.hasText())
+                                time = time + "  " + td.text();
+                            String bus =
+                                String.format(Locale.getDefault(),
+                                              BUS_FORMAT, num, desc, time);
+                            list.add(bus);
+                        }
+                        String[] buses = list.toArray(new String[0]);
+                        builder.setItems(buses, null);
+                    }
+
+                    else
+                    {
+                        Element h2 = content.selectFirst("h2");
+                        if (h2 != null && h2.hasText())
+                            list.add(h2.text());
+                        Element ul = content.selectFirst("ul.has-smalls");
+                        if (ul != null)
+                        {
+                            Elements lis = ul.select("li");
+                            for (Element li: lis)
+                            {
+                                if (li.selectFirst("strong.name") != null)
+                                {
+                                    String num =
+                                        li.selectFirst("strong.name").text();
+                                    String desc =
+                                        li.selectFirst
+                                        ("span.description").text();
+                                    String bus =
+                                        String.format(Locale.getDefault(),
+                                                      STOP_FORMAT, num, desc);
+                                    list.add(bus);
+                                }
+                            }
+                        }
+                        String[] buses = list.toArray(new String[0]);
+                        builder.setItems(buses, null);
+                    }
+
+                    builder.setNegativeButton(android.R.string.ok, null);
+                    builder.show();
+
+                    progressBar.setVisibility(View.GONE);
+                }
+
+                catch (Exception e)
+                {
+                    alertDialog(R.string.appName,
+                                e.getMessage(),
+                                android.R.string.ok);
+                    progressBar.setVisibility(View.GONE);
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        catch (Exception e)
+        {
+            map.post(() ->
+            {
+                alertDialog(R.string.appName,
+                            e.getMessage(),
+                            android.R.string.ok);
+                progressBar.setVisibility(View.GONE);
+                e.printStackTrace();
+            });
         }
 
         // Get context
@@ -718,38 +758,50 @@ public class Buses extends Activity
             Document doc = Jsoup.connect(uri).get();
             map.post(() ->
             {
-                Element content = doc.selectFirst("#content");
-
-                // Build dialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                String title = content.selectFirst("h1").text();
-                builder.setTitle(title);
-
-                List<String> list = new ArrayList<>();
-                List<String> urls = new ArrayList<>();
-
-                Element ul = content.selectFirst("ul.long");
-                if (ul != null)
+                try
                 {
-                    Elements lis = ul.select("li");
-                    for (Element li: lis)
+                    Element content = doc.selectFirst("#content");
+
+                    // Build dialog
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    String title = content.selectFirst("h1").text();
+                    builder.setTitle(title);
+
+                    List<String> list = new ArrayList<>();
+                    List<String> urls = new ArrayList<>();
+
+                    Element ul = content.selectFirst("ul.long");
+                    if (ul != null)
                     {
-                        list.add(li.text());
-                        urls.add(li.selectFirst("a").attr("href"));
+                        Elements lis = ul.select("li");
+                        for (Element li: lis)
+                        {
+                            list.add(li.text());
+                            urls.add(li.selectFirst("a").attr("href"));
+                        }
+
+                        String[] locations = list.toArray(new String[0]);
+                        builder.setItems(locations, (dialog, which) ->
+                        {
+                            String loc = urls.get(which);
+                            executor.execute(() -> stopsFromLocation(loc));
+                        });
                     }
 
-                    String[] locations = list.toArray(new String[0]);
-                    builder.setItems(locations, (dialog, which) ->
-                    {
-                        String loc = urls.get(which);
-                        executor.execute(() -> stopsFromLocation(loc));
-                    });
+                    builder.setNegativeButton(android.R.string.cancel, null);
+                    builder.show();
+
+                    progressBar.setVisibility(View.GONE);
                 }
 
-                builder.setNegativeButton(android.R.string.cancel, null);
-                builder.show();
-
-                progressBar.setVisibility(View.GONE);
+                catch (Exception e)
+                {
+                    alertDialog(R.string.appName,
+                                e.getMessage(),
+                                android.R.string.ok);
+                    progressBar.setVisibility(View.GONE);
+                    e.printStackTrace();
+                }
             });
         }
 
@@ -761,8 +813,8 @@ public class Buses extends Activity
                             e.getMessage(),
                             android.R.string.ok);
                 progressBar.setVisibility(View.GONE);
+                e.printStackTrace();
             });
-            e.printStackTrace();
         }
     }
 
@@ -893,6 +945,8 @@ public class Buses extends Activity
                 {
                     String code = null;
                     String text = null;
+                    double east = 0;
+                    double nort = 0;
                     double lng = 0;
                     double lat = 0;
 
@@ -909,6 +963,14 @@ public class Buses extends Activity
                             text = reader.nextString();
                             break;
 
+                        case EASTING:
+                            east = reader.nextDouble();
+                            break;
+
+                        case NORTHING:
+                            nort = reader.nextDouble();
+                            break;
+
                         case LATITUDE:
                             lat = reader.nextDouble();
                             break;
@@ -922,7 +984,7 @@ public class Buses extends Activity
                         }
                     }
                     reader.endObject();
-                    Stop stop = new Stop(code, text, lat, lng);
+                    Stop stop = new Stop(code, text, east, nort, lat, lng);
                     list.add(stop);
                 }
                 reader.endArray();
@@ -948,13 +1010,19 @@ public class Buses extends Activity
     {
         String code;
         String text;
+        double east;
+        double nort;
         double lat;
         double lng;
 
-        Stop(String code, String text, double lat, double lng)
+        Stop(String code, String text,
+             double east, double nort,
+             double lat, double lng)
         {
             this.code = code;
             this.text = text;
+            this.east = east;
+            this.nort = nort;
             this.lat = lat;
             this.lng = lng;
         }
