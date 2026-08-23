@@ -828,37 +828,49 @@ public class Buses extends Activity
             Document doc = Jsoup.connect(uri).get();
             map.post(() ->
             {
-                Element content = doc.selectFirst("#content");
-
-                // Build dialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                String title = content.selectFirst("h2").text();
-                builder.setTitle(title);
-
-                List<String> list = new ArrayList<>();
-                List<String> urls = new ArrayList<>();
-
-                Element ul = content.selectFirst("ul.long");
-                if (ul != null)
+                try
                 {
-                    Elements lis = ul.select("li");
-                    for (Element li: lis)
+                    Element content = doc.selectFirst("#content");
+
+                    // Build dialog
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    String title = content.selectFirst("h2").text();
+                    builder.setTitle(title);
+
+                    List<String> list = new ArrayList<>();
+                    List<String> urls = new ArrayList<>();
+
+                    Element ul = content.selectFirst("ul.long");
+                    if (ul != null)
                     {
-                        list.add(li.text());
-                        urls.add(li.selectFirst("a").attr("href"));
+                        Elements lis = ul.select("li");
+                        for (Element li: lis)
+                        {
+                            list.add(li.text());
+                            urls.add(li.selectFirst("a").attr("href"));
+                        }
+
+                        String[] locations = list.toArray(new String[0]);
+                        builder.setItems(locations, (dialog, which) ->
+                        {
+                            String url = urls.get(which);
+                            String code = url.replace(STOPS_PREFIX, "");
+                            executor.execute(() -> busesFromCode(code));
+                        });
                     }
 
-                    String[] locations = list.toArray(new String[0]);
-                    builder.setItems(locations, (dialog, which) ->
-                    {
-                        String url = urls.get(which);
-                        String code = url.replace(STOPS_PREFIX, "");
-                        executor.execute(() -> busesFromCode(code));
-                    });
+                    builder.setNegativeButton(android.R.string.cancel, null);
+                    builder.show();
                 }
 
-                builder.setNegativeButton(android.R.string.cancel, null);
-                builder.show();
+                catch (Exception e)
+                {
+                    alertDialog(R.string.appName,
+                                e.getMessage(),
+                                android.R.string.ok);
+                    progressBar.setVisibility(View.GONE);
+                    e.printStackTrace();
+                }
             });
         }
 
