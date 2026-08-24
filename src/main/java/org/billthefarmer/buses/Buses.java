@@ -959,8 +959,6 @@ public class Buses extends Activity
                     String text = null;
                     double east = 0;
                     double nort = 0;
-                    double lng = 0;
-                    double lat = 0;
 
                     reader.beginObject();
                     while (reader.hasNext())
@@ -983,20 +981,12 @@ public class Buses extends Activity
                             nort = reader.nextDouble();
                             break;
 
-                        case LATITUDE:
-                            lat = reader.nextDouble();
-                            break;
-
-                        case LONGITUDE:
-                            lng = reader.nextDouble();
-                            break;
-
                         default:
                             reader.skipValue();
                         }
                     }
                     reader.endObject();
-                    Stop stop = new Stop(code, text, east, nort, lat, lng);
+                    Stop stop = new Stop(code, text, east, nort);
                     list.add(stop);
                 }
                 reader.endArray();
@@ -1024,19 +1014,14 @@ public class Buses extends Activity
         String text;
         double east;
         double nort;
-        double lat;
-        double lng;
 
         Stop(String code, String text,
-             double east, double nort,
-             double lat, double lng)
+             double east, double nort)
         {
             this.code = code;
             this.text = text;
             this.east = east;
             this.nort = nort;
-            this.lat = lat;
-            this.lng = lng;
         }
     }
 
