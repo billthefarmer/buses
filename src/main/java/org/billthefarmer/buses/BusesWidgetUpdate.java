@@ -186,13 +186,15 @@ public class BusesWidgetUpdate extends Service
                         Elements trs = tbody.select("tr");
                         for (Element tr: trs)
                         {
+                            Element td = tr.selectFirst("td.nowrap");
+                            if (td == null)
+                                continue;
                             String num = tr.selectFirst("td.nowrap > a").text();
                             String desc =
                                 tr.selectFirst("td.nowrap + td").ownText();
                             String time = tr.selectFirst
                                 ("td.nowrap + td + td").text();
-                            Element td =
-                                tr.selectFirst("td.nowrap + td + td + td");
+                            td = tr.selectFirst("td.nowrap + td + td + td");
                             if (td != null && td.hasText())
                                 time = time + "  " + td.text();
                             String bus = String.format(Locale.getDefault(),
